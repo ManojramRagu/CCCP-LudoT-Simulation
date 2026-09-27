@@ -1,4 +1,4 @@
-package com.cccp.ludot.model;
+package model;
 
 import java.util.Objects;
 import java.util.Random;
@@ -16,10 +16,6 @@ public class Dice {
         this.lastRoll = 1;
     }
 
-    /**
-     * Rolls the die and returns a value between 1 and 6.
-     * @return integer between 1 and 6
-     */
     public int roll() {
         this.lastRoll = random.nextInt(6) + 1;
         return this.lastRoll;

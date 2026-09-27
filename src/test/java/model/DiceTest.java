@@ -1,4 +1,4 @@
-package com.cccp.ludot.model;
+package model;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

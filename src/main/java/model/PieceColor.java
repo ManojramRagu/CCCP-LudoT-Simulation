@@ -1,4 +1,4 @@
-package com.cccp.ludot.model;
+package model;
 
 public enum PieceColor {
     RED,
