@@ -1,27 +1,24 @@
-package com.cccp.ludot.model;
+package model;
 
 public class Piece {
     private final String id;
     private final PieceColor color;
-    private int currentPosition; // -1 represents inside Base
+    private int currentPosition;
     private MovementDirection direction;
     private boolean inBase;
     private boolean completed;
-    private boolean hasCapturedOpponent; // Rule T-2/T-7 requirement
-    private int approachCellPasses; // Rule T-1 tracking for Counter-Clockwise
-
+    private boolean hasCapturedOpponent;
+    private int approachCellPasses;
     public Piece(String id, PieceColor color) {
         this.id = id;
         this.color = color;
         this.currentPosition = -1;
-        this.direction = MovementDirection.CLOCKWISE; // Default until coin toss
+        this.direction = MovementDirection.CLOCKWISE;
         this.inBase = true;
         this.completed = false;
         this.hasCapturedOpponent = false;
         this.approachCellPasses = 0;
     }
-
-    // --- Getters &amp; Setters ---
 
     public String getId() {
         return id;
