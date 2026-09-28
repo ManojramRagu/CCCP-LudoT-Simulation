@@ -10,12 +10,16 @@ public class MovePieceCommand implements GameCommand {
     private final Player player;
     private final Board board;
     private final int steps;
+    private boolean captured;
+    private int previousPosition;
 
     public MovePieceCommand(Piece piece, Player player, Board board, int steps) {
         this.piece = piece;
         this.player = player;
         this.board = board;
         this.steps = steps;
+        this.captured = false;
+        this.previousPosition = piece != null ? piece.getCurrentPosition() : -1;
     }
 
     @Override
@@ -34,6 +38,8 @@ public class MovePieceCommand implements GameCommand {
         if (!isExecutable()) {
             return;
         }
+
+        this.previousPosition = piece.getCurrentPosition();
 
         if (piece.isInBase() && steps == 6) {
             int startIdx = Board.getStartingIndex(player.getColor());
@@ -64,9 +70,20 @@ public class MovePieceCommand implements GameCommand {
                     occupant.setInBase(true);
                     occupant.setCurrentPosition(-1);
                     piece.recordCapture();
+                    this.captured = true;
                 }
             }
             targetCell.clearPieces();
         }
+    }
+
+    @Override
+    public boolean hasCaptured() {
+        return captured;
+    }
+
+    @Override
+    public int getPreviousPosition() {
+        return previousPosition;
     }
 }
