@@ -32,7 +32,7 @@ public class AggressiveStrategy implements PlayerStrategy {
     private boolean landsOnOpponent(Piece piece, Board board, int diceRoll, Player player) {
         int targetPos = (piece.getCurrentPosition() + diceRoll) % Board.TOTAL_TRACK_CELLS;
         Cell targetCell = board.getTrackCell(targetPos);
-        return targetCell.getOccupiers().stream()
+        return targetCell.getOccupyingPieces().stream()
                 .anyMatch(p -> p.getColor() != player.getColor());
     }
 }
