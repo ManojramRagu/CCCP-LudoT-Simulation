@@ -56,11 +56,11 @@ public class LudoTGameFacade {
         List<Piece> movablePieces = findMovablePieces(player, roll);
 
         Piece chosenPiece = strategy.selectPieceToMove(player, movablePieces, board, roll);
-        GameCommand command = CommandFactory.createCommand(chosenPiece, roll, board, player);
+        GameCommand command = CommandFactory.createMoveCommand(chosenPiece, player, board, roll);
         command.execute();
 
         boolean captured = command.hasCaptured();
-        int startPos = chosenPiece != null ? command.getPreviousPosition() : -1;
+        int startPos = command.getPreviousPosition();
         int endPos = chosenPiece != null ? chosenPiece.getCurrentPosition() : -1;
         String pieceId = chosenPiece != null ? chosenPiece.getId() : "NONE";
 

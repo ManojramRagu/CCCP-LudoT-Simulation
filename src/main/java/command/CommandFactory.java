@@ -15,4 +15,8 @@ public class CommandFactory {
         }
         return command;
     }
+
+    public static GameCommand createCommand(Piece piece, int steps, Board board, Player player) {
+        return createMoveCommand(piece, player, board, steps);
+    }
 }
