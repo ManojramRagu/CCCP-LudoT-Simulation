@@ -11,4 +11,8 @@ public record GameEventDTO(
     int endPosition,
     boolean capturedOpponent,
     String eventDescription
-) {}
+) {
+    public String description() {
+        return eventDescription;
+    }
+}
