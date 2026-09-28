@@ -1,20 +1,18 @@
 package gateway;
 
 import dto.GameEventDTO;
-import observer.GameEventObserver;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class InMemoryGameLogGateway implements GameLogGateway, GameEventObserver {
+public class InMemoryGameLogGateway implements GameLogGateway {
     private final List<GameEventDTO> events = new ArrayList<>();
 
     @Override
     public void logEvent(GameEventDTO event) {
         if (event != null) {
             events.add(event);
-            System.out.println(event.eventDescription());
+            System.out.println("[TURN " + event.turnNumber() + "] " + event.eventDescription());
         }
     }
 
