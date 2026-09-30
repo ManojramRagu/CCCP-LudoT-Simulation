@@ -1,61 +1,64 @@
 package command;
 
-import model.Board;
-import model.Cell;
-import model.Piece;
-import model.Player;
+import model.*;
+import java.util.List;
 
 public class MovePieceCommand implements GameCommand {
-    private final Piece piece;
+    private final BoardToken token;
     private final Player player;
     private final Board board;
-    private final int steps;
-    private int previousPosition;
+    private final int diceRoll;
+    private final int previousPosition;
     private boolean captured;
 
-    public MovePieceCommand(Piece piece, Player player, Board board, int steps) {
-        this.piece = piece;
+    public MovePieceCommand(BoardToken token, Player player, Board board, int diceRoll) {
+        this.token = token;
         this.player = player;
         this.board = board;
-        this.steps = steps;
-        this.previousPosition = piece != null ? piece.getCurrentPosition() : -1;
+        this.diceRoll = diceRoll;
+        this.previousPosition = token != null ? token.getCurrentPosition() : -1;
         this.captured = false;
     }
 
     @Override
     public boolean isExecutable() {
-        if (piece == null || player == null || board == null || steps <= 0) {
-            return false;
+        if (token == null || player == null || board == null || diceRoll <= 0) return false;
+
+        if (token.getCurrentPosition() == -1) {
+            return diceRoll == 6; // Rule 2: Must roll a 6 to exit base
         }
-        if (piece.isInBase()) {
-            return steps == 6;
-        }
-        return !piece.isCompleted();
+
+        int actualSteps = token.getTokenSize() > 1 ? (diceRoll / token.getTokenSize()) : diceRoll;
+        return actualSteps > 0;
     }
 
     @Override
     public void execute() {
-        if (!isExecutable()) {
-            return;
-        }
+        if (!isExecutable()) return;
 
-        if (piece.isInBase() && steps == 6) {
+        if (token.getCurrentPosition() == -1 && diceRoll == 6) {
             int startIdx = Board.getStartingIndex(player.getColor());
-            piece.setInBase(false);
-            piece.setCurrentPosition(startIdx);
+            token.setCurrentPosition(startIdx);
             Cell startCell = board.getTrackCell(startIdx);
             handleCaptureOnCell(startCell);
-            startCell.addPiece(piece);
+            for(Piece p : token.getComponentPieces()) {
+                startCell.addPiece(p);
+            }
             return;
         }
 
-        int currentPos = piece.getCurrentPosition();
+        int actualSteps = token.getTokenSize() > 1 ? (diceRoll / token.getTokenSize()) : diceRoll;
+        int currentPos = token.getCurrentPosition();
         int actualTarget = currentPos;
 
-        for (int i = 1; i <= steps; i++) {
+        for (int i = 1; i <= actualSteps; i++) {
             int nextPos = (currentPos + i) % Board.TOTAL_TRACK_CELLS;
             Cell nextCell = board.getTrackCell(nextPos);
+
             if (nextCell.isBlocked() && nextCell.hasOpponentPiece(player.getColor())) {
+                if (i == actualSteps && nextCell.getOccupyingPieces().size() == token.getTokenSize()) {
+                    actualTarget = nextPos;
+                }
                 break;
             }
             actualTarget = nextPos;
@@ -63,37 +66,35 @@ public class MovePieceCommand implements GameCommand {
 
         if (actualTarget != currentPos) {
             Cell oldCell = board.getTrackCell(currentPos);
-            oldCell.removePiece(piece);
+            for(Piece p : token.getComponentPieces()) oldCell.removePiece(p);
 
             Cell targetCell = board.getTrackCell(actualTarget);
             handleCaptureOnCell(targetCell);
 
-            piece.setCurrentPosition(actualTarget);
-            targetCell.addPiece(piece);
+            token.setCurrentPosition(actualTarget);
+            for(Piece p : token.getComponentPieces()) targetCell.addPiece(p);
         }
     }
 
     private void handleCaptureOnCell(Cell targetCell) {
         if (targetCell.hasOpponentPiece(player.getColor())) {
-            for (Piece occupant : targetCell.getOccupyingPieces()) {
-                if (occupant.getColor() != player.getColor()) {
-                    occupant.setInBase(true);
-                    occupant.setCurrentPosition(-1);
-                    piece.recordCapture();
-                    this.captured = true;
+            List<Piece> occupants = targetCell.getOccupyingPieces();
+            if (occupants.size() == token.getTokenSize()) {
+                for (Piece occupant : occupants) {
+                    if (occupant.getColor() != player.getColor()) {
+                        occupant.resetToBase();
+                        token.recordCapture(1);
+                        this.captured = true;
+                    }
                 }
+                targetCell.clearPieces();
             }
-            targetCell.clearPieces();
         }
     }
 
     @Override
-    public int getPreviousPosition() {
-        return previousPosition;
-    }
+    public int getPreviousPosition() { return previousPosition; }
 
     @Override
-    public boolean hasCaptured() {
-        return captured;
-    }
+    public boolean hasCaptured() { return captured; }
 }

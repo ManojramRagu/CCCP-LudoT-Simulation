@@ -2,21 +2,11 @@ package command;
 
 public class NullCommand implements GameCommand {
     @Override
-    public void execute() {
-    }
-
+    public void execute() { }
     @Override
-    public boolean isExecutable() {
-        return false;
-    }
-
+    public boolean isExecutable() { return false; }
     @Override
-    public boolean hasCaptured() {
-        return false;
-    }
-
+    public boolean hasCaptured() { return false; }
     @Override
-    public int getPreviousPosition() {
-        return -1;
-    }
+    public int getPreviousPosition() { return -1; }
 }
