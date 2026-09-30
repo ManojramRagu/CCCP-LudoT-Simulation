@@ -6,9 +6,11 @@ import java.util.List;
 import java.util.Map;
 
 public class Board {
+    // Singleton Instance
+    private static Board instance;
+
     public static final int TOTAL_TRACK_CELLS = 52;
     public static final int HOME_STRAIGHT_LENGTH = 5;
-    public static final int COLOR_OFFSET = 13;
 
     public static final int YELLOW_START_INDEX = 0;
     public static final int BLUE_START_INDEX = 13;
@@ -20,6 +22,7 @@ public class Board {
     public static final int RED_APPROACH_INDEX = 25;
     public static final int GREEN_APPROACH_INDEX = 38;
 
+    // Based on Rule T-11: 9th, 27th, and 46th from Yellow Approach (cell 51 = 0)
     public static final int ALPHA_CELL_INDEX = 8;
     public static final int BETA_CELL_INDEX = 26;
     public static final int GAMMA_CELL_INDEX = 45;
@@ -27,18 +30,30 @@ public class Board {
     private final List<Cell> trackCells;
     private final Map<PieceColor, List<Cell>> homeStraights;
     private Cell activeMysteryCell;
-    private int mysteryCellTurnsRemaining;
 
-    public Board() {
+    // Private constructor prevents external instantiation
+    private Board() {
         this.trackCells = new ArrayList<>(TOTAL_TRACK_CELLS);
         this.homeStraights = new EnumMap<>(PieceColor.class);
         initializeBoard();
     }
 
+    // Thread-safe Singleton accessor
+    public static synchronized Board getInstance() {
+        if (instance == null) {
+            instance = new Board();
+        }
+        return instance;
+    }
+
+    // For testing purposes: allows resetting the board state between JUnit tests
+    public static synchronized void resetInstance() {
+        instance = null;
+    }
+
     private void initializeBoard() {
         for (int i = 0; i < TOTAL_TRACK_CELLS; i++) {
-            CellType type = determineCellType(i);
-            trackCells.add(new Cell(i, type));
+            trackCells.add(new Cell(i, determineCellType(i)));
         }
 
         for (PieceColor color : PieceColor.values()) {
@@ -51,12 +66,12 @@ public class Board {
     }
 
     private CellType determineCellType(int index) {
-        if (index == YELLOW_START_INDEX || index == BLUE_START_INDEX || 
-            index == RED_START_INDEX || index == GREEN_START_INDEX) {
+        if (index == YELLOW_START_INDEX || index == BLUE_START_INDEX ||
+                index == RED_START_INDEX || index == GREEN_START_INDEX) {
             return CellType.STARTING_X;
         }
-        if (index == YELLOW_APPROACH_INDEX || index == BLUE_APPROACH_INDEX || 
-            index == RED_APPROACH_INDEX || index == GREEN_APPROACH_INDEX) {
+        if (index == YELLOW_APPROACH_INDEX || index == BLUE_APPROACH_INDEX ||
+                index == RED_APPROACH_INDEX || index == GREEN_APPROACH_INDEX) {
             return CellType.APPROACH;
         }
         return CellType.STANDARD;
@@ -76,33 +91,17 @@ public class Board {
         Cell target = getTrackCell(index);
         target.setType(CellType.MYSTERY);
         activeMysteryCell = target;
-        mysteryCellTurnsRemaining = 16;
     }
 
     public void removeMysteryCell() {
         if (activeMysteryCell != null) {
-            CellType originalType = determineCellType(activeMysteryCell.getIndex());
-            activeMysteryCell.setType(originalType);
+            activeMysteryCell.setType(determineCellType(activeMysteryCell.getIndex()));
             activeMysteryCell = null;
-            mysteryCellTurnsRemaining = 0;
         }
     }
 
     public Cell getActiveMysteryCell() {
         return activeMysteryCell;
-    }
-
-    public int getMysteryCellTurnsRemaining() {
-        return mysteryCellTurnsRemaining;
-    }
-
-    public void decrementMysteryCellTimer() {
-        if (mysteryCellTurnsRemaining > 0) {
-            mysteryCellTurnsRemaining--;
-            if (mysteryCellTurnsRemaining == 0) {
-                removeMysteryCell();
-            }
-        }
     }
 
     public static int getStartingIndex(PieceColor color) {
@@ -111,15 +110,6 @@ public class Board {
             case BLUE -> BLUE_START_INDEX;
             case RED -> RED_START_INDEX;
             case GREEN -> GREEN_START_INDEX;
-        };
-    }
-
-    public static int getApproachIndex(PieceColor color) {
-        return switch (color) {
-            case YELLOW -> YELLOW_APPROACH_INDEX;
-            case BLUE -> BLUE_APPROACH_INDEX;
-            case RED -> RED_APPROACH_INDEX;
-            case GREEN -> GREEN_APPROACH_INDEX;
         };
     }
 }
