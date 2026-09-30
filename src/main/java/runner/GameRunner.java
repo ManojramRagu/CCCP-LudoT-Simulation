@@ -104,6 +104,9 @@ public class GameRunner {
     }
 
     private void printRoundSummary() {
+        // Adds a blank line and a clear divider BEFORE the summary starts
+        System.out.println("\n--- END OF ROUND " + roundCount + " SUMMARY ---");
+
         for (PieceColor color : PieceColor.values()) {
             model.Player player = gameFacade.getPlayers().get(color);
             long onBoard = player.getPieces().stream().filter(p -> !p.isInBase() && !p.isCompleted()).count();
@@ -119,9 +122,11 @@ public class GameRunner {
 
         model.Cell mystery = gameFacade.getBoard().getActiveMysteryCell();
         if (mystery != null) {
-            // Adjusted 'values' to 'rounds' for slightly better English, but keeping the <N> format required by the brief.
             System.out.println("The mystery cell is at L" + mystery.getIndex() + " and will be at that location for the next " + mysteryCellTimer + " values.");
         }
+
+        // Adds a blank line AFTER the summary so the next round's dice rolls stand out clearly
+        System.out.println();
     }
 
     private void announceWinner() {
