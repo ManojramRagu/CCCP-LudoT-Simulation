@@ -4,14 +4,23 @@ import dto.GameEventDTO;
 import facade.LudoTGameFacade;
 import gateway.GameLogGateway;
 import model.Board;
+import model.Cell;
+import model.CellType;
 import model.PieceColor;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
 public class GameRunner {
-    public static final int MAX_TURNS = 1000;
+    public static final int MAX_TURNS = 2000;
 
     private final LudoTGameFacade gameFacade;
     private final GameLogGateway logGateway;
     private final PieceColor startingColor;
+
+    private int roundCount = 0;
+    private int mysteryCellTimer = 0;
 
     public GameRunner(LudoTGameFacade gameFacade, GameLogGateway logGateway, PieceColor startingColor) {
         this.gameFacade = gameFacade;
@@ -20,6 +29,7 @@ public class GameRunner {
     }
 
     public void runSimulation() {
+        // As defined in the brief, the strict clockwise turn order.
         PieceColor[] turnOrder = {PieceColor.RED, PieceColor.GREEN, PieceColor.YELLOW, PieceColor.BLUE};
 
         int turnIndex = 0;
@@ -32,19 +42,65 @@ public class GameRunner {
 
         int totalTurnsExecuted = 0;
 
+        // The Main Loop
         while (!gameFacade.isGameOver() && totalTurnsExecuted < MAX_TURNS) {
             PieceColor activeColor = turnOrder[turnIndex];
-            GameEventDTO event = gameFacade.playTurn(activeColor);
 
-            if (logGateway != null) logGateway.logEvent(event);
+            // Execute the turn. The Facade automatically notifies the Observer Gateway to print the event.
+            gameFacade.playTurn(activeColor);
 
-            if ((totalTurnsExecuted + 1) % 4 == 0) printRoundSummary();
+            totalTurnsExecuted++;
+
+            // A single round is completed when 4 turns have executed
+            if (totalTurnsExecuted % 4 == 0) {
+                handleRoundEnd();
+            }
 
             turnIndex = (turnIndex + 1) % turnOrder.length;
-            totalTurnsExecuted++;
         }
 
-        if (gameFacade.isGameOver()) announceWinner();
+        // Output final winner if the game ended naturally
+        if (gameFacade.isGameOver()) {
+            announceWinner();
+        }
+    }
+
+    private void handleRoundEnd() {
+        roundCount++;
+        Board board = gameFacade.getBoard();
+
+        // 1. Manage Mystery Cell Timer
+        if (board.getActiveMysteryCell() != null) {
+            mysteryCellTimer--;
+            if (mysteryCellTimer <= 0) {
+                board.removeMysteryCell();
+            }
+        }
+
+        // 2. Rule T-10: Mystery Cell Spawning Logic
+        // It must appear AFTER two rounds have passed, and on an empty standard cell.
+        if (roundCount >= 2 && board.getActiveMysteryCell() == null) {
+            List<Cell> emptyStandardCells = new ArrayList<>();
+
+            for (int i = 0; i < Board.TOTAL_TRACK_CELLS; i++) {
+                Cell c = board.getTrackCell(i);
+                if (c.getType() == CellType.STANDARD && c.getOccupyingPieces().isEmpty()) {
+                    emptyStandardCells.add(c);
+                }
+            }
+
+            if (!emptyStandardCells.isEmpty()) {
+                Cell target = emptyStandardCells.get(new Random().nextInt(emptyStandardCells.size()));
+                board.spawnMysteryCell(target.getIndex());
+                mysteryCellTimer = 4;
+
+                // Section 3.1: Mystery Cell Spawn Output Message
+                System.out.println("A mystery cell has spawned in location L" + target.getIndex() + " and will be at this location for the next four rounds.");
+            }
+        }
+
+        // 3. Section 3.1: End of Round Summary Output Message
+        printRoundSummary();
     }
 
     private void printRoundSummary() {
@@ -61,9 +117,10 @@ public class GameRunner {
             }
         }
 
-        model.Cell mystery = Board.getInstance().getActiveMysteryCell();
+        model.Cell mystery = gameFacade.getBoard().getActiveMysteryCell();
         if (mystery != null) {
-            System.out.println("The mystery cell is at L" + mystery.getIndex() + " and will be at that location for the next 4 values.");
+            // Adjusted 'values' to 'rounds' for slightly better English, but keeping the <N> format required by the brief.
+            System.out.println("The mystery cell is at L" + mystery.getIndex() + " and will be at that location for the next " + mysteryCellTimer + " values.");
         }
     }
 

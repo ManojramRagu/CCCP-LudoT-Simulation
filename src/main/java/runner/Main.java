@@ -8,7 +8,6 @@ import model.Dice;
 
 public class Main {
 
-    // The brief defines clockwise order as Red -> Green -> Yellow -> Blue (Section 1.1)
     private static final PieceColor[] CLOCKWISE_ORDER = {
             PieceColor.RED, PieceColor.GREEN, PieceColor.YELLOW, PieceColor.BLUE
     };
