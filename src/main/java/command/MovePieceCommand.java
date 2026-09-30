@@ -10,16 +10,16 @@ public class MovePieceCommand implements GameCommand {
     private final Player player;
     private final Board board;
     private final int steps;
-    private boolean captured;
     private int previousPosition;
+    private boolean captured;
 
     public MovePieceCommand(Piece piece, Player player, Board board, int steps) {
         this.piece = piece;
         this.player = player;
         this.board = board;
         this.steps = steps;
-        this.captured = false;
         this.previousPosition = piece != null ? piece.getCurrentPosition() : -1;
+        this.captured = false;
     }
 
     @Override
@@ -39,8 +39,6 @@ public class MovePieceCommand implements GameCommand {
             return;
         }
 
-        this.previousPosition = piece.getCurrentPosition();
-
         if (piece.isInBase() && steps == 6) {
             int startIdx = Board.getStartingIndex(player.getColor());
             piece.setInBase(false);
@@ -52,15 +50,27 @@ public class MovePieceCommand implements GameCommand {
         }
 
         int currentPos = piece.getCurrentPosition();
-        Cell oldCell = board.getTrackCell(currentPos);
-        oldCell.removePiece(piece);
+        int actualTarget = currentPos;
 
-        int targetPos = (currentPos + steps) % Board.TOTAL_TRACK_CELLS;
-        Cell targetCell = board.getTrackCell(targetPos);
-        handleCaptureOnCell(targetCell);
+        for (int i = 1; i <= steps; i++) {
+            int nextPos = (currentPos + i) % Board.TOTAL_TRACK_CELLS;
+            Cell nextCell = board.getTrackCell(nextPos);
+            if (nextCell.isBlocked() && nextCell.hasOpponentPiece(player.getColor())) {
+                break;
+            }
+            actualTarget = nextPos;
+        }
 
-        piece.setCurrentPosition(targetPos);
-        targetCell.addPiece(piece);
+        if (actualTarget != currentPos) {
+            Cell oldCell = board.getTrackCell(currentPos);
+            oldCell.removePiece(piece);
+
+            Cell targetCell = board.getTrackCell(actualTarget);
+            handleCaptureOnCell(targetCell);
+
+            piece.setCurrentPosition(actualTarget);
+            targetCell.addPiece(piece);
+        }
     }
 
     private void handleCaptureOnCell(Cell targetCell) {
@@ -78,12 +88,12 @@ public class MovePieceCommand implements GameCommand {
     }
 
     @Override
-    public boolean hasCaptured() {
-        return captured;
+    public int getPreviousPosition() {
+        return previousPosition;
     }
 
     @Override
-    public int getPreviousPosition() {
-        return previousPosition;
+    public boolean hasCaptured() {
+        return captured;
     }
 }

@@ -32,7 +32,9 @@ class GatewayAndRunnerTest {
 
         runner.runSimulation();
 
-        assertTrue(runner.getLoggedEventCount() <= GameRunner.MAX_TURNS);
-        assertTrue(runner.getLoggedEventCount() > 0);
+        assertTrue(runner.getLoggedEventCount() <= GameRunner.MAX_TURNS,
+                "Logged event count should be <= MAX_TURNS (1000) but was " + runner.getLoggedEventCount());
+        assertTrue(runner.getLoggedEventCount() > 0,
+                "Logged event count should be > 0");
     }
 }

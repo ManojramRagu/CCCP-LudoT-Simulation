@@ -12,7 +12,13 @@ public record GameEventDTO(
     boolean capturedOpponent,
     String eventDescription
 ) {
-    public String description() {
-        return eventDescription;
-    }
+    public int turnNumber() { return turnNumber; }
+    public PieceColor playerColor() { return playerColor; }
+    public int diceRoll() { return diceRoll; }
+    public String pieceMovedId() { return pieceMovedId; }
+    public int startPosition() { return startPosition; }
+    public int endPosition() { return endPosition; }
+    public boolean capturedOpponent() { return capturedOpponent; }
+    public String eventDescription() { return eventDescription; }
+    public String description() { return eventDescription; }
 }

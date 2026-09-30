@@ -3,9 +3,7 @@ package runner;
 import dto.GameEventDTO;
 import facade.LudoTGameFacade;
 import gateway.GameLogGateway;
-import model.Piece;
 import model.PieceColor;
-import model.Player;
 
 public class GameRunner {
     public static final int MAX_TURNS = 1000;
@@ -19,44 +17,63 @@ public class GameRunner {
     }
 
     public void runSimulation() {
-        PieceColor[] turnOrder = new PieceColor[]{PieceColor.RED, PieceColor.GREEN, PieceColor.YELLOW, PieceColor.BLUE};
+        PieceColor[] turnOrder = PieceColor.values();
         int turnIndex = 0;
         int totalTurnsExecuted = 0;
 
         while (!gameFacade.isGameOver() && totalTurnsExecuted < MAX_TURNS) {
             PieceColor activeColor = turnOrder[turnIndex];
             GameEventDTO event = gameFacade.playTurn(activeColor);
-            logGateway.logEvent(event);
+            
+            // Log event to gateway ONCE per turn
+            if (logGateway != null) {
+                logGateway.logEvent(event);
+            }
+
+            // Print round summary every 4 turns
+            if ((totalTurnsExecuted + 1) % 4 == 0) {
+                printRoundSummary();
+            }
 
             turnIndex = (turnIndex + 1) % turnOrder.length;
             totalTurnsExecuted++;
+        }
 
-            if (totalTurnsExecuted % 4 == 0) {
-                printRoundSummary(totalTurnsExecuted / 4);
-            }
+        if (gameFacade.isGameOver()) {
+            announceWinner();
         }
     }
 
-    private void printRoundSummary(int roundNumber) {
-        System.out.println("\n--- END OF ROUND " + roundNumber + " ---");
+    private void printRoundSummary() {
         for (PieceColor color : PieceColor.values()) {
-            Player p = gameFacade.getPlayers().get(color);
-            System.out.println(color + " player now has " + p.getActivePiecesOnBoardCount() + "/4 pieces on board and " + p.getPiecesInBaseCount() + "/4 pieces in base.");
-            System.out.println("============================ Location of pieces " + color + " ============================");
-            for (Piece piece : p.getPieces()) {
-                String loc = piece.isInBase() ? "Base" : piece.isCompleted() ? "Home" : "L" + piece.getCurrentPosition();
-                System.out.println("Piece " + piece.getId() + " -> " + loc);
+            model.Player player = gameFacade.getPlayers().get(color);
+            long onBoard = player.getActivePiecesOnBoardCount();
+            long inBase = player.getPiecesInBaseCount();
+            System.out.println("[" + color.name().toLowerCase() + "] player now has " + onBoard + "/4 pieces on the board and " + inBase + "/4 pieces on the base.");
+            System.out.println("============================ Location of pieces " + color.name().toLowerCase() + " ============================");
+            for (model.Piece p : player.getPieces()) {
+                String loc = p.isInBase() ? "Base" : (p.isCompleted() ? "Home" : "L" + p.getCurrentPosition());
+                System.out.println("Piece " + p.getId() + " − > " + loc);
             }
         }
-        if (gameFacade.getBoard().getActiveMysteryCell() != null) {
-            int loc = gameFacade.getBoard().getActiveMysteryCell().getIndex();
-            int turns = gameFacade.getBoard().getMysteryCellTurnsRemaining();
-            System.out.println("The mystery cell is at L" + loc + " and will be at that location for the next " + turns + " turns.");
+        model.Cell mystery = gameFacade.getBoard().getActiveMysteryCell();
+        if (mystery != null) {
+            System.out.println("The mystery cell is at L" + mystery.getIndex() + " and will be at that location for the next 4 values.");
         }
-        System.out.println("----------------------------------------\n");
+    }
+
+    private void announceWinner() {
+        PieceColor winner = gameFacade.getPlayers().values().stream()
+                .filter(model.Player::hasWon)
+                .map(model.Player::getColor)
+                .findFirst()
+                .orElse(null);
+        if (winner != null) {
+            System.out.println("[" + winner.name().toLowerCase() + "] player wins!!!");
+        }
     }
 
     public int getLoggedEventCount() {
-        return logGateway.getAllEvents().size();
+        return logGateway != null ? logGateway.getAllEvents().size() : 0;
     }
 }

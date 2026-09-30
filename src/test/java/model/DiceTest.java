@@ -22,10 +22,26 @@ class DiceTest {
     }
 
     @Test
+    @DisplayName("Dice initial value should be 0 before any roll")
+    void testInitialValueZero() {
+        Dice dice = new Dice();
+        assertEquals(0, dice.getLastRoll());
+    }
+
+    @Test
+    @DisplayName("Resetting dice clears last roll and consecutive sixes")
+    void testResetDice() {
+        Dice dice = new Dice();
+        dice.roll();
+        dice.reset();
+        assertEquals(0, dice.getLastRoll());
+        assertEquals(0, dice.getConsecutiveSixesCount());
+    }
+
+    @Test
     @DisplayName("Dice roll should return deterministic value when Random is mocked")
     void testMockedDiceRoll() {
         Random mockRandom = Mockito.mock(Random.class);
-        // Random.nextInt(6) returning 5 means roll() should produce 6
         when(mockRandom.nextInt(6)).thenReturn(5);
 
         Dice dice = new Dice(mockRandom);

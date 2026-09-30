@@ -54,6 +54,36 @@ class CommandTest {
     }
 
     @Test
+    @DisplayName("MovePieceCommand stops piece before a defensive block per Rule T-3")
+    void testDefensiveBlockStopping() {
+        Player red = new Player("Red", PieceColor.RED);
+        Player blue = new Player("Blue", PieceColor.BLUE);
+        Board board = new Board();
+
+        Piece redPiece = red.getPieces().get(0);
+        redPiece.setInBase(false);
+        redPiece.setCurrentPosition(0);
+        board.getTrackCell(0).addPiece(redPiece);
+
+        Piece blue1 = blue.getPieces().get(0);
+        blue1.setInBase(false);
+        blue1.setCurrentPosition(3);
+        board.getTrackCell(3).addPiece(blue1);
+
+        Piece blue2 = blue.getPieces().get(1);
+        blue2.setInBase(false);
+        blue2.setCurrentPosition(3);
+        board.getTrackCell(3).addPiece(blue2);
+
+        assertTrue(board.getTrackCell(3).isBlocked());
+
+        GameCommand command = CommandFactory.createMoveCommand(redPiece, red, board, 5);
+        command.execute();
+
+        assertEquals(2, redPiece.getCurrentPosition());
+    }
+
+    @Test
     @DisplayName("CommandFactory creates NullCommand when move is invalid")
     void testNullCommandExecution() {
         Player player = new Player("Red", PieceColor.RED);

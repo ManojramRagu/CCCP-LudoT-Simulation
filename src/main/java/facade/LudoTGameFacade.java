@@ -31,9 +31,19 @@ public class LudoTGameFacade {
         initializeGame();
     }
 
-    public void registerObserver(GameEventObserver observer) {
+    public void addObserver(GameEventObserver observer) {
         if (observer != null && !observers.contains(observer)) {
             observers.add(observer);
+        }
+    }
+
+    public void removeObserver(GameEventObserver observer) {
+        observers.remove(observer);
+    }
+
+    private void notifyObservers(GameEventDTO event) {
+        for (GameEventObserver obs : observers) {
+            obs.onGameEvent(event);
         }
     }
 
@@ -66,48 +76,46 @@ public class LudoTGameFacade {
 
         Piece chosenPiece = strategy.selectPieceToMove(player, movablePieces, board, roll);
         GameCommand command = CommandFactory.createCommand(chosenPiece, roll, board, player);
-        
-        int startPos = chosenPiece != null ? chosenPiece.getCurrentPosition() : -1;
-        boolean wasInBase = chosenPiece != null && chosenPiece.isInBase();
-
         command.execute();
 
         boolean captured = command.hasCaptured();
+        int startPos = chosenPiece != null ? command.getPreviousPosition() : -1;
         int endPos = chosenPiece != null ? chosenPiece.getCurrentPosition() : -1;
         String pieceId = chosenPiece != null ? chosenPiece.getId() : "NONE";
 
-        String desc = formatEventDescription(player, chosenPiece, roll, wasInBase, startPos, endPos, captured);
+        String desc = formatSection31Message(activeColor, roll, pieceId, chosenPiece, startPos, endPos, captured, player);
         GameEventDTO event = new GameEventDTO(currentTurn, activeColor, roll, pieceId, startPos, endPos, captured, desc);
-        
         gameLog.add(event);
         notifyObservers(event);
 
         return event;
     }
 
-    private String formatEventDescription(Player player, Piece piece, int roll, boolean wasInBase, int startPos, int endPos, boolean captured) {
-        if (piece == null) {
-            return player.getColor() + " player rolled " + roll + " but has no valid moves.";
-        }
-        if (wasInBase && !piece.isInBase()) {
-            return player.getColor() + " player moves piece " + piece.getId() + " to the starting point. " +
-                   player.getColor() + " player now has " + player.getActivePiecesOnBoardCount() + "/4 pieces on the board and " +
-                   player.getPiecesInBaseCount() + "/4 pieces on the base.";
-        }
-        if (captured) {
-            return player.getColor() + " piece " + piece.getId() + " lands on square L" + endPos + ", captures an opponent piece, and returns it to base. " +
-                   player.getColor() + " player now has " + player.getActivePiecesOnBoardCount() + "/4 pieces on board and " +
-                   player.getPiecesInBaseCount() + "/4 pieces in base.";
-        }
-        String dir = piece.getDirection() == MovementDirection.CLOCKWISE ? "clockwise" : "counter-clockwise";
-        return player.getColor() + " moves piece " + piece.getId() + " from location L" + startPos + " to L" + endPos +
-               " by " + roll + " units in " + dir + " direction.";
-    }
+    private String formatSection31Message(PieceColor color, int roll, String pieceId, Piece piece, int startPos, int endPos, boolean captured, Player player) {
+        String colName = color.name().toLowerCase();
+        StringBuilder sb = new StringBuilder();
+        sb.append(colName).append(" player rolled ").append(roll).append(".");
 
-    private void notifyObservers(GameEventDTO event) {
-        for (GameEventObserver observer : observers) {
-            observer.onGameEvent(event);
+        if (piece == null || pieceId.equals("NONE")) {
+            sb.append(" ").append(colName).append(" player has no valid moves.");
+        } else if (startPos == -1 && !piece.isInBase()) {
+            sb.append(" ").append(colName).append(" player moves piece ").append(pieceId)
+              .append(" to the starting point. ").append(colName).append(" player now has ")
+              .append(player.getActivePiecesOnBoardCount()).append("/4 pieces on the board and ")
+              .append(player.getPiecesInBaseCount()).append("/4 pieces on the base.");
+        } else {
+            sb.append(" ").append(colName).append(" moves piece ").append(pieceId)
+              .append(" from location L").append(startPos).append(" to L").append(endPos)
+              .append(" by ").append(roll).append(" units in ")
+              .append(piece.getDirection().name().toLowerCase().replace('_', '-')).append(" direction.");
         }
+
+        if (captured) {
+            sb.append(" ").append(colName).append(" piece ").append(pieceId)
+              .append(" lands on square L").append(endPos).append(", captures opponent piece, and returns it to the base.");
+        }
+
+        return sb.toString();
     }
 
     private List<Piece> findMovablePieces(Player player, int roll) {
