@@ -1,14 +1,16 @@
 package model;
 
-public class Piece {
+import java.util.Collections;
+import java.util.List;
+
+public class Piece implements BoardToken {
     private final String id;
     private final PieceColor color;
     private int currentPosition;
     private MovementDirection direction;
     private boolean inBase;
     private boolean completed;
-    private boolean hasCapturedOpponent;
-    private int approachCellPasses;
+    private int capturesMade;
 
     private PieceState state;
     private int energizedRounds;
@@ -22,18 +24,20 @@ public class Piece {
         this.direction = MovementDirection.CLOCKWISE;
         this.inBase = true;
         this.completed = false;
-        this.hasCapturedOpponent = false;
-        this.approachCellPasses = 0;
+        this.capturesMade = 0;
         this.state = PieceState.BASE;
-        this.energizedRounds = 0;
-        this.sickRounds = 0;
-        this.restrictedRounds = 0;
     }
 
+    @Override
     public String getId() { return id; }
+
+    @Override
     public PieceColor getColor() { return color; }
+
+    @Override
     public int getCurrentPosition() { return currentPosition; }
-    
+
+    @Override
     public void setCurrentPosition(int currentPosition) {
         this.currentPosition = currentPosition;
         if (currentPosition != -1 && inBase) {
@@ -42,10 +46,27 @@ public class Piece {
         }
     }
 
+    @Override
     public MovementDirection getDirection() { return direction; }
+
     public void setDirection(MovementDirection direction) { this.direction = direction; }
 
+    @Override
+    public List<Piece> getComponentPieces() {
+        return Collections.singletonList(this);
+    }
+
+    @Override
+    public int getTokenSize() { return 1; }
+
+    @Override
+    public boolean hasCapturedOpponent() { return capturesMade > 0; }
+
+    @Override
+    public void recordCapture(int amount) { this.capturesMade += amount; }
+
     public boolean isInBase() { return inBase; }
+
     public void setInBase(boolean inBase) {
         this.inBase = inBase;
         if (inBase) {
@@ -68,48 +89,27 @@ public class Piece {
     public PieceState getState() { return state; }
     public void setState(PieceState state) { this.state = state; }
 
-    public void setInHomeStraight(boolean inHomeStraight) {
-        if (inHomeStraight) {
-            this.state = PieceState.HOME_STRAIGHT;
-            this.inBase = false;
-        }
-    }
-
-    public boolean hasCapturedOpponent() { return hasCapturedOpponent; }
-    public void recordCapture() { this.hasCapturedOpponent = true; }
-
-    public int getApproachCellPasses() { return approachCellPasses; }
-    public void incrementApproachCellPasses() { this.approachCellPasses++; }
-
     public boolean isEnergized() { return energizedRounds > 0; }
-    public int getEnergizedRounds() { return energizedRounds; }
     public void setEnergizedRounds(int rounds) { this.energizedRounds = rounds; }
 
     public boolean isSick() { return sickRounds > 0; }
-    public int getSickRounds() { return sickRounds; }
     public void setSickRounds(int rounds) { this.sickRounds = rounds; }
 
     public boolean isRestricted() { return restrictedRounds > 0; }
-    public int getRestrictedRounds() { return restrictedRounds; }
     public void setRestrictedRounds(int rounds) { this.restrictedRounds = rounds; }
 
     public void resetToBase() {
         setInBase(true);
-        this.hasCapturedOpponent = false;
-        this.approachCellPasses = 0;
+        this.capturesMade = 0;
         this.energizedRounds = 0;
         this.sickRounds = 0;
         this.restrictedRounds = 0;
+        this.direction = MovementDirection.CLOCKWISE;
     }
 
     public void decrementStatusEffects() {
         if (energizedRounds > 0) energizedRounds--;
         if (sickRounds > 0) sickRounds--;
         if (restrictedRounds > 0) restrictedRounds--;
-    }
-
-    @Override
-    public String toString() {
-        return id + " (" + color + ", Pos: " + currentPosition + ", Base: " + inBase + ")";
     }
 }

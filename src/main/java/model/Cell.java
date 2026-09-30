@@ -15,43 +15,22 @@ public class Cell {
         this.occupyingPieces = new ArrayList<>();
     }
 
-    public int getIndex() {
-        return index;
-    }
-
-    public CellType getType() {
-        return type;
-    }
-
-    public void setType(CellType type) {
-        this.type = type;
-    }
+    public int getIndex() { return index; }
+    public CellType getType() { return type; }
+    public void setType(CellType type) { this.type = type; }
 
     public List<Piece> getOccupyingPieces() {
         return Collections.unmodifiableList(occupyingPieces);
     }
 
     public void addPiece(Piece piece) {
-        if (piece != null) {
+        if (piece != null && !occupyingPieces.contains(piece)) {
             occupyingPieces.add(piece);
         }
     }
 
     public void removePiece(Piece piece) {
         occupyingPieces.remove(piece);
-    }
-
-    public boolean isBlocked() {
-        if (occupyingPieces.size() < 2) {
-            return false;
-        }
-        PieceColor firstColor = occupyingPieces.get(0).getColor();
-        for (Piece p : occupyingPieces) {
-            if (p.getColor() != firstColor) {
-                return false;
-            }
-        }
-        return true;
     }
 
     public boolean hasOpponentPiece(PieceColor color) {
@@ -61,6 +40,16 @@ public class Cell {
             }
         }
         return false;
+    }
+
+    // Evaluates if the cell forms a block dynamically
+    public boolean isBlocked() {
+        if (occupyingPieces.size() < 2) return false;
+        PieceColor firstColor = occupyingPieces.get(0).getColor();
+        for (Piece p : occupyingPieces) {
+            if (p.getColor() != firstColor) return false;
+        }
+        return true;
     }
 
     public void clearPieces() {
