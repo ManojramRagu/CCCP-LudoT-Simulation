@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 
 public class Board {
-    // Singleton Instance
     private static Board instance;
 
     public static final int TOTAL_TRACK_CELLS = 52;
