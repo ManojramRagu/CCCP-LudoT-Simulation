@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 public class Board {
+    // Singleton Instance
     private static Board instance;
 
     public static final int TOTAL_TRACK_CELLS = 52;
@@ -21,7 +22,6 @@ public class Board {
     public static final int RED_APPROACH_INDEX = 25;
     public static final int GREEN_APPROACH_INDEX = 38;
 
-    // Based on Rule T-11: 9th, 27th, and 46th from Yellow Approach (cell 51 = 0)
     public static final int ALPHA_CELL_INDEX = 8;
     public static final int BETA_CELL_INDEX = 26;
     public static final int GAMMA_CELL_INDEX = 45;
@@ -30,14 +30,12 @@ public class Board {
     private final Map<PieceColor, List<Cell>> homeStraights;
     private Cell activeMysteryCell;
 
-    // Private constructor prevents external instantiation
     private Board() {
         this.trackCells = new ArrayList<>(TOTAL_TRACK_CELLS);
         this.homeStraights = new EnumMap<>(PieceColor.class);
         initializeBoard();
     }
 
-    // Thread-safe Singleton accessor
     public static synchronized Board getInstance() {
         if (instance == null) {
             instance = new Board();
@@ -45,7 +43,6 @@ public class Board {
         return instance;
     }
 
-    // For testing purposes: allows resetting the board state between JUnit tests
     public static synchronized void resetInstance() {
         instance = null;
     }
@@ -109,6 +106,16 @@ public class Board {
             case BLUE -> BLUE_START_INDEX;
             case RED -> RED_START_INDEX;
             case GREEN -> GREEN_START_INDEX;
+        };
+    }
+
+    // Added the missing method here
+    public static int getApproachIndex(PieceColor color) {
+        return switch (color) {
+            case YELLOW -> YELLOW_APPROACH_INDEX;
+            case BLUE -> BLUE_APPROACH_INDEX;
+            case RED -> RED_APPROACH_INDEX;
+            case GREEN -> GREEN_APPROACH_INDEX;
         };
     }
 }
