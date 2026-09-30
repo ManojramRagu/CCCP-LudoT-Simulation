@@ -28,7 +28,6 @@ public class Piece implements BoardToken {
         this.state = PieceState.BASE;
     }
 
-    @Override
     public String getId() { return id; }
 
     @Override
