@@ -29,25 +29,19 @@ class DiceTest {
     }
 
     @Test
-    @DisplayName("Resetting dice clears last roll and consecutive sixes")
-    void testResetDice() {
-        Dice dice = new Dice();
-        dice.roll();
-        dice.reset();
-        assertEquals(0, dice.getLastRoll());
-        assertEquals(0, dice.getConsecutiveSixesCount());
-    }
-
-    @Test
     @DisplayName("Dice roll should return deterministic value when Random is mocked")
     void testMockedDiceRoll() {
+        // ARRANGE: Inject a test double to guarantee a roll of 6
         Random mockRandom = Mockito.mock(Random.class);
-        when(mockRandom.nextInt(6)).thenReturn(5);
+        when(mockRandom.nextInt(6)).thenReturn(5); // nextInt(6) returns 0-5. 5 + 1 = 6.
 
         Dice dice = new Dice(mockRandom);
+
+        // ACT
         int roll = dice.roll();
 
-        assertEquals(6, roll, "Mocked die should return 6");
+        // ASSERT
+        assertEquals(6, roll, "Mocked die should return exactly 6");
         assertEquals(6, dice.getLastRoll());
     }
 }

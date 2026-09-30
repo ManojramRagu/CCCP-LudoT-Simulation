@@ -8,17 +8,28 @@ import model.PieceColor;
 
 public class GameRunner {
     public static final int MAX_TURNS = 1000;
+
     private final LudoTGameFacade gameFacade;
     private final GameLogGateway logGateway;
+    private final PieceColor startingColor;
 
-    public GameRunner(LudoTGameFacade gameFacade, GameLogGateway logGateway) {
+    public GameRunner(LudoTGameFacade gameFacade, GameLogGateway logGateway, PieceColor startingColor) {
         this.gameFacade = gameFacade;
         this.logGateway = logGateway;
+        this.startingColor = startingColor;
     }
 
     public void runSimulation() {
-        PieceColor[] turnOrder = PieceColor.values();
+        PieceColor[] turnOrder = {PieceColor.RED, PieceColor.GREEN, PieceColor.YELLOW, PieceColor.BLUE};
+
         int turnIndex = 0;
+        for (int i = 0; i < turnOrder.length; i++) {
+            if (turnOrder[i] == startingColor) {
+                turnIndex = i;
+                break;
+            }
+        }
+
         int totalTurnsExecuted = 0;
 
         while (!gameFacade.isGameOver() && totalTurnsExecuted < MAX_TURNS) {
@@ -62,5 +73,9 @@ public class GameRunner {
         if (winner != null) {
             System.out.println("[" + winner.name().toLowerCase() + "] player wins!!!");
         }
+    }
+
+    public int getLoggedEventCount() {
+        return logGateway != null ? logGateway.getAllEvents().size() : 0;
     }
 }

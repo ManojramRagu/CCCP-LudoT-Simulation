@@ -3,6 +3,7 @@ package runner;
 import facade.LudoTGameFacade;
 import gateway.GameLogGateway;
 import gateway.InMemoryGameLogGateway;
+import model.PieceColor;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -17,7 +18,8 @@ class GatewayAndRunnerTest {
         assertEquals(0, gateway.getAllEvents().size());
 
         LudoTGameFacade game = new LudoTGameFacade();
-        GameRunner runner = new GameRunner(game, gateway);
+        // Added PieceColor.RED to satisfy the Section 3.1 start order requirement
+        GameRunner runner = new GameRunner(game, gateway, PieceColor.RED);
         runner.runSimulation();
 
         assertTrue(gateway.getAllEvents().size() > 0);
@@ -28,7 +30,8 @@ class GatewayAndRunnerTest {
     void testGameRunnerExecution() {
         LudoTGameFacade game = new LudoTGameFacade();
         GameLogGateway gateway = new InMemoryGameLogGateway();
-        GameRunner runner = new GameRunner(game, gateway);
+        // Added PieceColor.RED
+        GameRunner runner = new GameRunner(game, gateway, PieceColor.RED);
 
         runner.runSimulation();
 
