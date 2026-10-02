@@ -121,7 +121,8 @@ public class GameRunner {
             long onBoard = player.getPieces().stream().filter(p -> !p.isInBase() && !p.isCompleted()).count();
             long inBase = player.getPieces().stream().filter(model.Piece::isInBase).count();
 
-            System.out.println("[" + color.name().toLowerCase() + "] player now has " + onBoard + "/4 pieces on the board and " + inBase + "/4 pieces on the base.");
+            // Replaced concatenation with exact String.format requested in the audit
+            System.out.println(String.format("[%s] player now has %d/4 pieces on the board and %d/4 pieces on the base.", color.name().toLowerCase(), onBoard, inBase));
             System.out.println("============================ Location of pieces " + color.name().toLowerCase() + " ============================");
             for (model.Piece p : player.getPieces()) {
                 String loc = p.isInBase() ? "Base" : (p.isCompleted() ? "Home" : "L" + p.getCurrentPosition());
@@ -131,7 +132,8 @@ public class GameRunner {
 
         model.Cell mystery = gameFacade.getBoard().getActiveMysteryCell();
         if (mystery != null) {
-            System.out.println("The mystery cell is at L" + mystery.getIndex() + " and will be at that location for the next " + mysteryCellTimer + " values.");
+            // Replaced concatenation with exact String.format requested in the audit
+            System.out.println(String.format("The mystery cell is at L%d and will be at that location for the next %d values.", mystery.getIndex(), mysteryCellTimer));
         }
         System.out.println();
     }
