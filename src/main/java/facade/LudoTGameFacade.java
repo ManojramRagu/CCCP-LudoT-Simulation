@@ -239,6 +239,7 @@ public class LudoTGameFacade {
         for (List<Piece> group : positionMap.values()) {
             if (group.size() > 1 && group.getFirst().getCurrentPosition() != -1) {
                 tokens.add(new Block(group));
+                tokens.addAll(group); // Include individual pieces to allow strategies to voluntarily break blocks
             } else {
                 tokens.addAll(group);
             }

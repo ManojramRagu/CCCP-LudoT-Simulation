@@ -232,4 +232,60 @@ class CommandTest {
 
         System.setOut(originalOut);
     }
+
+    @Test
+    @DisplayName("Restricted piece cannot move (Rule T-13 Beta effect)")
+    void testRestrictedPieceCannotMove() {
+        Player player = new Player("Green", PieceColor.GREEN, null);
+        Piece piece = player.getPieces().getFirst();
+        piece.setInBase(false);
+        piece.setState(PieceState.STANDARD_TRACK);
+        piece.setCurrentPosition(10);
+        piece.setRestrictedRounds(4);
+        
+        GameCommand command = CommandFactory.createMoveCommand(piece, player, board, 5);
+        assertFalse(command.isExecutable());
+    }
+
+    @Test
+    @DisplayName("Rule 10: Home straight exact roll completes piece")
+    void testHomeStraightExactRoll() {
+        Player player = new Player("Green", PieceColor.GREEN, null);
+        Piece piece = player.getPieces().getFirst();
+        piece.setInBase(false);
+        piece.setState(PieceState.HOME_STRAIGHT);
+        piece.setCurrentPosition(2); // Distance to home (length 5) = 3.
+        
+        GameCommand command = CommandFactory.createMoveCommand(piece, player, board, 3);
+        assertTrue(command.isExecutable());
+        command.execute();
+        
+        assertEquals(PieceState.COMPLETED, piece.getState());
+        assertTrue(piece.isCompleted());
+        assertEquals(-2, piece.getCurrentPosition());
+    }
+
+    @Test
+    @DisplayName("Rule T-1: CCW piece enters home straight on SECOND pass (pass count == 2)")
+    void testHomeStraightCounterClockwiseSecondPass() {
+        Player player = new Player("Yellow", PieceColor.YELLOW, null);
+        Piece piece = player.getPieces().getFirst();
+        piece.setInBase(false);
+        piece.setState(PieceState.STANDARD_TRACK);
+        piece.setCurrentPosition(51);
+        piece.setDirection(MovementDirection.COUNTER_CLOCKWISE);
+        piece.recordCapture(1);
+        piece.incrementApproachPassCount(); // Simulated first pass
+
+        // Now has pass count 1. Passing 50 increments to 2.
+        // Pass count >= 2 AND has capture = ENTERS HOME.
+        GameCommand command = CommandFactory.createMoveCommand(piece, player, board, 2);
+        
+        assertTrue(command.isExecutable());
+        command.execute();
+
+        assertEquals(0, piece.getCurrentPosition()); // (2 steps - 1 to approach) - 1 = index 0 in home straight
+        assertEquals(PieceState.HOME_STRAIGHT, piece.getState());
+        assertEquals(2, piece.getApproachPassCount());
+    }
 }

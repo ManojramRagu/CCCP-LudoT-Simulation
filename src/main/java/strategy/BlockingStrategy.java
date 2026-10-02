@@ -35,7 +35,11 @@ public class BlockingStrategy implements PlayerStrategy {
         // 3. Move other pieces home before breaking a block (avoid picking pieces that are part of a block)
         for (BoardToken token : movableTokens) {
             if (token.getTokenSize() == 1 && token.getCurrentPosition() != -1) {
-                return token; // Move a free piece
+                long piecesOfMyColor = board.getTrackCell(token.getCurrentPosition()).getOccupyingPieces().stream()
+                        .filter(p -> p.getColor() == player.getColor()).count();
+                if (piecesOfMyColor == 1) {
+                    return token; // Move a free piece
+                }
             }
         }
 

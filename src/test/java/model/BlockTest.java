@@ -35,4 +35,26 @@ class BlockTest {
         assertTrue(p1.hasCapturedOpponent());
         assertTrue(p2.hasCapturedOpponent());
     }
+
+    @Test
+    @DisplayName("Rule T-4: Block with opposing directions calculates direction by longest distance from home")
+    void testBlockOpposingDirectionsLongestDistance() {
+        Piece p1 = new Piece("R1", PieceColor.RED);
+        Piece p2 = new Piece("R2", PieceColor.RED);
+        p1.setDirection(MovementDirection.CLOCKWISE);
+        p2.setDirection(MovementDirection.COUNTER_CLOCKWISE);
+        
+        // Red approach is 24.
+        // At pos 20: CW distance is 24-20=4. CCW distance is (20-24+52)%52=48. CCW is longer.
+        p1.setCurrentPosition(20);
+        p2.setCurrentPosition(20);
+        Block block1 = new Block(Arrays.asList(p1, p2));
+        assertEquals(MovementDirection.COUNTER_CLOCKWISE, block1.getDirection());
+
+        // At pos 30: CW distance is (24-30+52)%52=46. CCW distance is 30-24=6. CW is longer.
+        p1.setCurrentPosition(30);
+        p2.setCurrentPosition(30);
+        Block block2 = new Block(Arrays.asList(p1, p2));
+        assertEquals(MovementDirection.CLOCKWISE, block2.getDirection());
+    }
 }
