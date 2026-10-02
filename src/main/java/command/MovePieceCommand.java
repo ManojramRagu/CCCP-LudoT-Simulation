@@ -50,7 +50,10 @@ public class MovePieceCommand implements GameCommand {
                     ? (approach - token.getCurrentPosition() + Board.TOTAL_TRACK_CELLS) % Board.TOTAL_TRACK_CELLS
                     : (token.getCurrentPosition() - approach + Board.TOTAL_TRACK_CELLS) % Board.TOTAL_TRACK_CELLS;
 
-            // THE CRITICAL FIX: Changed from (HOME_STRAIGHT_LENGTH + 1) to accurately enforce Rule 10
+            if (token.getDirection() == MovementDirection.COUNTER_CLOCKWISE && firstPiece.getApproachPassCount() < 1) {
+                return true;
+            }
+
             return actualSteps <= distToApproach || (actualSteps - distToApproach) <= Board.HOME_STRAIGHT_LENGTH;
         }
         return true;
@@ -109,15 +112,15 @@ public class MovePieceCommand implements GameCommand {
                     ? (currentPos + i) % Board.TOTAL_TRACK_CELLS
                     : (currentPos - i + Board.TOTAL_TRACK_CELLS) % Board.TOTAL_TRACK_CELLS;
 
-            if (prevPos == approachIndex && token.hasCapturedOpponent()) {
+            if (prevPos == approachIndex) {
                 if (token.getDirection() == MovementDirection.COUNTER_CLOCKWISE) {
                     firstPiece.incrementApproachPassCount();
-                    if (firstPiece.getApproachPassCount() >= 2) {
+                    if (firstPiece.getApproachPassCount() >= 2 && token.hasCapturedOpponent()) {
                         enteringHome = true;
                         homeStraightTarget = (actualSteps - i + 1) - 1;
                         break;
                     }
-                } else {
+                } else if (token.hasCapturedOpponent()) {
                     enteringHome = true;
                     homeStraightTarget = (actualSteps - i + 1) - 1;
                     break;
@@ -133,10 +136,17 @@ public class MovePieceCommand implements GameCommand {
                     String blockPieceName = nextCell.getOccupyingPieces().getFirst().getId();
                     String blockColorName = nextCell.getOccupyingPieces().getFirst().getColor().name().toLowerCase();
                     String myPieceName = token.getComponentPieces().getFirst().getId();
+                    int intendedTarget = token.getDirection() == MovementDirection.CLOCKWISE
+                            ? (currentPos + actualSteps) % Board.TOTAL_TRACK_CELLS
+                            : (currentPos - actualSteps + Board.TOTAL_TRACK_CELLS) % Board.TOTAL_TRACK_CELLS;
                     System.out.println(String.format("[%s] piece %s is blocked from moving from L%d to L%d by [%s] piece %s.", 
-                        player.getColor().name().toLowerCase(), myPieceName, currentPos, (currentPos + actualSteps)%Board.TOTAL_TRACK_CELLS, blockColorName, blockPieceName));
+                        player.getColor().name().toLowerCase(), myPieceName, currentPos, intendedTarget, blockColorName, blockPieceName));
                     System.out.println(String.format("[%s] does not have other pieces in the board to move instead of the blocked piece.", player.getColor().name().toLowerCase()));
-                    System.out.println(String.format("Moved the piece to square L%d which is the cell before the block.", actualTarget));
+                    if (actualTarget == currentPos) {
+                        System.out.println("Ignoring the throw and moving on to the next player.");
+                    } else {
+                        System.out.println(String.format("Moved the piece to square L%d which is the cell before the block.", actualTarget));
+                    }
                 }
                 break;
             }

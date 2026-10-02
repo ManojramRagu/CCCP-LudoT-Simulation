@@ -58,12 +58,18 @@ public class LudoTGameFacade {
                 moveCommand.execute();
                 captured = moveCommand.hasCaptured();
 
+                boolean landedOnMystery = selectedToken.getCurrentPosition() >= 0 
+                        && board.getTrackCell(selectedToken.getCurrentPosition()).getType() == CellType.MYSTERY;
+
                 if (startPos == -1) {
                     description = String.format("[%s] player moves piece %s to the starting point.", color.name().toLowerCase(), pieceId);
                 } else if (captured) {
                     description = String.format("[%s] piece %s lands on square L%d, captures [%s] piece %s, and returns it to the base.", 
                             color.name().toLowerCase(), pieceId, selectedToken.getCurrentPosition(), 
                             moveCommand.getCapturedOpponentColor().name().toLowerCase(), moveCommand.getCapturedOpponentName());
+                } else if (landedOnMystery) {
+                    // Ghost Movement: suppress the standard move output when teleportation will follow
+                    description = null;
                 } else {
                     String dirStr = selectedToken.getDirection() == MovementDirection.CLOCKWISE ? "clockwise" : "counter-clockwise";
                     description = String.format("[%s] moves piece %s from location L%d to L%d by %d units in %s direction.", 
@@ -76,7 +82,7 @@ public class LudoTGameFacade {
                     System.out.println(String.format("[%s] player now has %d/4 on pieces on the board and %d/4 pieces on the base.", color.name().toLowerCase(), onBoard, inBase));
                 }
                 
-                if (selectedToken.getCurrentPosition() >= 0 && board.getTrackCell(selectedToken.getCurrentPosition()).getType() == CellType.MYSTERY) {
+                if (landedOnMystery) {
                     handleTeleportation(selectedToken, color);
                 }
             } else {
@@ -161,21 +167,23 @@ public class LudoTGameFacade {
         }
         
         if (targetCell.hasOpponentPiece(color)) {
-            List<Piece> occupants = targetCell.getOccupyingPieces();
-            if (occupants.size() == token.getTokenSize()) {
-                String opponentName = occupants.getFirst().getId();
-                PieceColor oppColor = occupants.getFirst().getColor();
+            List<Piece> occupants = new java.util.ArrayList<>(targetCell.getOccupyingPieces());
+            long opponentCount = occupants.stream().filter(occ -> occ.getColor() != color).count();
+            if (opponentCount > 0 && opponentCount <= token.getTokenSize()) {
+                String opponentName = occupants.stream().filter(occ -> occ.getColor() != color).findFirst().get().getId();
+                PieceColor oppColor = occupants.stream().filter(occ -> occ.getColor() != color).findFirst().get().getColor();
                 for (Piece occupant : occupants) {
                     if (occupant.getColor() != color) {
                         occupant.resetToBase();
                         token.recordCapture(1);
+                        targetCell.removePiece(occupant);
                     }
                 }
-                targetCell.getOccupyingPieces().removeIf(p -> p.getColor() != color);
+                // Capture Sequence: capture announcement BEFORE counts
                 System.out.println(String.format("[%s] piece %s lands on square L%d, captures [%s] piece %s, and returns it to the base.", color.name().toLowerCase(), pieceId, targetPos, oppColor.name().toLowerCase(), opponentName));
                 long onBoard = players.get(color).getPieces().stream().filter(p -> !p.isInBase() && !p.isCompleted()).count();
                 long inBase = players.get(color).getPieces().stream().filter(Piece::isInBase).count();
-                System.out.println(String.format("[%s] player now has %d/4 pieces on the board and %d/4 pieces on the base.", color.name().toLowerCase(), onBoard, inBase));
+                System.out.println(String.format("[%s] player now has %d/4 on pieces on the board and %d/4 pieces on the base.", color.name().toLowerCase(), onBoard, inBase));
             }
         }
     }

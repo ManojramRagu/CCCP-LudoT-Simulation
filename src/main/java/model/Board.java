@@ -9,7 +9,7 @@ public class Board {
     // Singleton Instance
     private static Board instance;
 
-    public static final int TOTAL_TRACK_CELLS = 52;
+public static final int TOTAL_TRACK_CELLS = 52;
     public static final int HOME_STRAIGHT_LENGTH = 5;
 
     public static final int YELLOW_START_INDEX = 0;
@@ -17,14 +17,14 @@ public class Board {
     public static final int RED_START_INDEX = 26;
     public static final int GREEN_START_INDEX = 39;
 
-    public static final int YELLOW_APPROACH_INDEX = 51;
-    public static final int BLUE_APPROACH_INDEX = 12;
-    public static final int RED_APPROACH_INDEX = 25;
-    public static final int GREEN_APPROACH_INDEX = 38;
+    public static final int YELLOW_APPROACH_INDEX = 50;
+    public static final int BLUE_APPROACH_INDEX = 11;
+    public static final int RED_APPROACH_INDEX = 24;
+    public static final int GREEN_APPROACH_INDEX = 37;
 
-    public static final int ALPHA_CELL_INDEX = 8;
-    public static final int BETA_CELL_INDEX = 26;
-    public static final int GAMMA_CELL_INDEX = 45;
+    public static final int ALPHA_CELL_INDEX = (YELLOW_APPROACH_INDEX + 9) % TOTAL_TRACK_CELLS;
+    public static final int BETA_CELL_INDEX = (YELLOW_APPROACH_INDEX + 27) % TOTAL_TRACK_CELLS;
+    public static final int GAMMA_CELL_INDEX = (YELLOW_APPROACH_INDEX + 46) % TOTAL_TRACK_CELLS;
 
     private final List<Cell> trackCells;
     private final Map<PieceColor, List<Cell>> homeStraights;

@@ -161,7 +161,7 @@ public class GameRunner {
                         loc = "L" + p.getCurrentPosition();
                     }
                 }
-                System.out.println("Piece " + p.getId() + " -> " + loc);
+                System.out.println("Piece " + p.getId() + " - > " + loc);
             }
         }
 
