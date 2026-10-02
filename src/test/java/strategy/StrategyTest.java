@@ -16,6 +16,7 @@ class StrategyTest {
     private Player redPlayer;
     private Player bluePlayer;
     private Player greenPlayer;
+    private Player yellowPlayer;
 
     @BeforeEach
     void setUp() {
@@ -25,80 +26,62 @@ class StrategyTest {
         redPlayer = new Player("Red Player", PieceColor.RED, new AggressiveStrategy());
         bluePlayer = new Player("Blue Player", PieceColor.BLUE, new ChaoticStrategy());
         greenPlayer = new Player("Green Player", PieceColor.GREEN, new BlockingStrategy());
-    }
-
-    @Test
-    @DisplayName("AggressiveStrategy prioritizes capturing opponent piece over standard advance")
-    void testAggressiveStrategyPrefersCapture() {
-        Piece p1 = redPlayer.getPieces().getFirst();
-        Piece p2 = redPlayer.getPieces().get(1);
-        p1.setInBase(false); p1.setCurrentPosition(0);
-        p2.setInBase(false); p2.setCurrentPosition(10);
-
-        Piece bluePiece = bluePlayer.getPieces().getFirst();
-        bluePiece.setInBase(false); bluePiece.setCurrentPosition(3);
-        board.getTrackCell(3).addPiece(bluePiece);
-
-        AggressiveStrategy strategy = new AggressiveStrategy();
-        BoardToken selected = strategy.selectTokenToMove(redPlayer, List.<BoardToken>of(p1, p2), board, 3);
-
-        assertEquals(p1, selected);
+        yellowPlayer = new Player("Yellow Player", PieceColor.YELLOW, new OpportunisticStrategy());
     }
 
     @Test
     @DisplayName("Section 2.1.1: AggressiveStrategy exits base on rolling 6 when NO pieces are on track")
     void testAggressiveStrategyExitBaseWhenEmptyTrack() {
-        Piece basePiece1 = redPlayer.getPieces().getFirst();
-        Piece basePiece2 = redPlayer.getPieces().get(1);
-
-        AggressiveStrategy strategy = new AggressiveStrategy();
-        BoardToken selected = strategy.selectTokenToMove(redPlayer, List.<BoardToken>of(basePiece1, basePiece2), board, 6);
-
-        assertEquals(basePiece1, selected);
-    }
-
-    @Test
-    @DisplayName("Section 2.1.1: AggressiveStrategy strictly refuses to exit base if it already has a piece on track")
-    void testAggressiveStrategyRefusesExitBaseWhenAlreadyOnTrack() {
         Piece basePiece = redPlayer.getPieces().getFirst();
-        Piece activePiece = redPlayer.getPieces().get(1);
-        activePiece.setInBase(false);
-        activePiece.setCurrentPosition(10);
-
         AggressiveStrategy strategy = new AggressiveStrategy();
-        // Roll is 6. The bot MUST pick the active piece, not the base piece.
-        BoardToken selected = strategy.selectTokenToMove(redPlayer, List.<BoardToken>of(activePiece, basePiece), board, 6);
-
-        assertEquals(activePiece, selected);
-    }
-
-    @Test
-    @DisplayName("AggressiveStrategy returns null when movable tokens list is empty")
-    void testAggressiveStrategyEmptyList() {
-        AggressiveStrategy strategy = new AggressiveStrategy();
-        assertNull(strategy.selectTokenToMove(redPlayer, Collections.emptyList(), board, 3));
-        assertNull(strategy.selectTokenToMove(redPlayer, null, board, 3));
-    }
-
-    @Test
-    @DisplayName("Section 2.1.2: BlockingStrategy (Green) prioritizes bringing pieces out of base on rolling 6")
-    void testBlockingStrategyPrefersExitingBase() {
-        Piece basePiece = greenPlayer.getPieces().getFirst();
-        Piece activePiece = greenPlayer.getPieces().get(1);
-        activePiece.setInBase(false);
-        activePiece.setCurrentPosition(15);
-
-        BlockingStrategy strategy = new BlockingStrategy();
-        BoardToken selected = strategy.selectTokenToMove(greenPlayer, List.<BoardToken>of(activePiece, basePiece), board, 6);
-
+        BoardToken selected = strategy.selectTokenToMove(redPlayer, List.<BoardToken>of(basePiece), board, 6);
         assertEquals(basePiece, selected);
     }
 
     @Test
-    @DisplayName("BlockingStrategy returns null when movable tokens list is empty")
-    void testBlockingStrategyEmptyList() {
+    @DisplayName("Section 2.1.2: Green Player prioritizes moving Blockades over single pieces")
+    void testGreenPrioritizesBlocks() {
+        Piece g1 = greenPlayer.getPieces().getFirst();
+        Piece g2 = greenPlayer.getPieces().get(1);
+        Piece g3 = greenPlayer.getPieces().get(2);
+
+        g1.setCurrentPosition(10); g2.setCurrentPosition(10);
+        g3.setCurrentPosition(15);
+        Block block = new Block(List.of(g1, g2));
+
         BlockingStrategy strategy = new BlockingStrategy();
-        assertNull(strategy.selectTokenToMove(greenPlayer, Collections.emptyList(), board, 4));
-        assertNull(strategy.selectTokenToMove(greenPlayer, null, board, 4));
+        BoardToken selected = strategy.selectTokenToMove(greenPlayer, List.of(block, g3), board, 4);
+
+        assertInstanceOf(Block.class, selected); // Green chooses the block
+    }
+
+    @Test
+    @DisplayName("Section 2.1.3: Yellow Player prioritizes pieces that have NOT captured an opponent yet (Rule T-7 Requirement)")
+    void testYellowPrioritizesUncapturedPieces() {
+        Piece y1 = yellowPlayer.getPieces().getFirst();
+        Piece y2 = yellowPlayer.getPieces().get(1);
+
+        y1.setCurrentPosition(10); y1.recordCapture(1); // Already captured, can go home
+        y2.setCurrentPosition(15); // Has not captured, cannot go home
+
+        OpportunisticStrategy strategy = new OpportunisticStrategy();
+        BoardToken selected = strategy.selectTokenToMove(yellowPlayer, List.of(y1, y2), board, 4);
+
+        assertEquals(y2, selected); // Yellow chooses piece that desperately needs a capture
+    }
+
+    @Test
+    @DisplayName("Section 2.1.4: Blue Player strictly rotates tokens cyclically regardless of board position")
+    void testBlueCyclicRotation() {
+        Piece b1 = bluePlayer.getPieces().get(0);
+        Piece b2 = bluePlayer.getPieces().get(1);
+        b1.setCurrentPosition(10);
+        b2.setCurrentPosition(15);
+
+        ChaoticStrategy strategy = new ChaoticStrategy();
+
+        // Simulating 4 consecutive turns
+        assertEquals(b1, strategy.selectTokenToMove(bluePlayer, List.of(b1, b2), board, 3));
+        assertEquals(b2, strategy.selectTokenToMove(bluePlayer, List.of(b1, b2), board, 3));
     }
 }

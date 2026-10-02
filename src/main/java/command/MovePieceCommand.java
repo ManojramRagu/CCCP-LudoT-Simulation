@@ -38,13 +38,12 @@ public class MovePieceCommand implements GameCommand {
 
         if (firstPiece.getState() == PieceState.STANDARD_TRACK && token.hasCapturedOpponent()) {
             int approach = Board.getApproachIndex(player.getColor());
-
             int distToApproach = token.getDirection() == MovementDirection.CLOCKWISE
                     ? (approach - token.getCurrentPosition() + Board.TOTAL_TRACK_CELLS) % Board.TOTAL_TRACK_CELLS
                     : (token.getCurrentPosition() - approach + Board.TOTAL_TRACK_CELLS) % Board.TOTAL_TRACK_CELLS;
 
-            // IntelliJ Warning Fix: Simplified nested if statements into a single return boolean
-            return actualSteps <= distToApproach || (actualSteps - distToApproach) <= Board.HOME_STRAIGHT_LENGTH + 1;
+            // THE CRITICAL FIX: Changed from (HOME_STRAIGHT_LENGTH + 1) to accurately enforce Rule 10
+            return actualSteps <= distToApproach || (actualSteps - distToApproach) <= Board.HOME_STRAIGHT_LENGTH;
         }
         return true;
     }
@@ -61,9 +60,14 @@ public class MovePieceCommand implements GameCommand {
             token.setCurrentPosition(startIdx);
             Cell startCell = board.getTrackCell(startIdx);
             handleCaptureOnCell(startCell);
+
+            CoinToss toss = new CoinToss();
+            MovementDirection chosenDirection = toss.flip();
+
             for(Piece p : token.getComponentPieces()) {
                 p.setInBase(false);
                 p.setState(PieceState.STANDARD_TRACK);
+                p.setDirection(chosenDirection);
                 startCell.addPiece(p);
             }
             return;
@@ -96,8 +100,7 @@ public class MovePieceCommand implements GameCommand {
 
             if (prevPos == approachIndex && token.hasCapturedOpponent()) {
                 enteringHome = true;
-                int remainingSteps = actualSteps - i + 1;
-                homeStraightTarget = remainingSteps - 1;
+                homeStraightTarget = (actualSteps - i + 1) - 1;
                 break;
             }
 

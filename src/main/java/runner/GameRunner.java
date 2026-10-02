@@ -29,9 +29,7 @@ public class GameRunner {
     }
 
     public void runSimulation() {
-        // As defined in the brief, the strict clockwise turn order.
         PieceColor[] turnOrder = {PieceColor.RED, PieceColor.GREEN, PieceColor.YELLOW, PieceColor.BLUE};
-
         int turnIndex = 0;
         for (int i = 0; i < turnOrder.length; i++) {
             if (turnOrder[i] == startingColor) {
@@ -42,14 +40,36 @@ public class GameRunner {
 
         int totalTurnsExecuted = 0;
 
-        // The Main Loop
         while (!gameFacade.isGameOver() && totalTurnsExecuted < MAX_TURNS) {
             PieceColor activeColor = turnOrder[turnIndex];
 
-            // Execute the turn. The Facade automatically notifies the Observer Gateway to print the event.
-            gameFacade.playTurn(activeColor);
+            // RULE 4 & T-2 IMPLEMENTED: Bonus Rolls & Turn Execution Loop
+            boolean bonusTurn;
+            int consecutiveSixes = 0;
 
-            totalTurnsExecuted++;
+            do {
+                bonusTurn = false;
+                GameEventDTO event = gameFacade.playTurn(activeColor);
+                totalTurnsExecuted++;
+
+                if (event.diceRoll() == 6) {
+                    consecutiveSixes++;
+                    if (consecutiveSixes == 3) {
+                        System.out.println("Rule 4 Triggered: Third consecutive 6 rolled. Turn ignored.");
+                        if (gameFacade.hasBlockade(activeColor)) {
+                            gameFacade.executePenaltyBreak(activeColor); // Rule T-6 Execution
+                        }
+                        break; // End the turn
+                    } else {
+                        bonusTurn = true; // Rule 4 Bonus Roll
+                    }
+                } else {
+                    consecutiveSixes = 0;
+                    if (event.capturedOpponent()) {
+                        bonusTurn = true; // Rule T-2 Capture Bonus Roll
+                    }
+                }
+            } while (bonusTurn && !gameFacade.isGameOver() && totalTurnsExecuted < MAX_TURNS);
 
             // A single round is completed when 4 turns have executed
             if (totalTurnsExecuted % 4 == 0) {
@@ -59,7 +79,6 @@ public class GameRunner {
             turnIndex = (turnIndex + 1) % turnOrder.length;
         }
 
-        // Output final winner if the game ended naturally
         if (gameFacade.isGameOver()) {
             announceWinner();
         }
@@ -69,7 +88,6 @@ public class GameRunner {
         roundCount++;
         Board board = gameFacade.getBoard();
 
-        // 1. Manage Mystery Cell Timer
         if (board.getActiveMysteryCell() != null) {
             mysteryCellTimer--;
             if (mysteryCellTimer <= 0) {
@@ -77,11 +95,8 @@ public class GameRunner {
             }
         }
 
-        // 2. Rule T-10: Mystery Cell Spawning Logic
-        // It must appear AFTER two rounds have passed, and on an empty standard cell.
         if (roundCount >= 2 && board.getActiveMysteryCell() == null) {
             List<Cell> emptyStandardCells = new ArrayList<>();
-
             for (int i = 0; i < Board.TOTAL_TRACK_CELLS; i++) {
                 Cell c = board.getTrackCell(i);
                 if (c.getType() == CellType.STANDARD && c.getOccupyingPieces().isEmpty()) {
@@ -93,20 +108,14 @@ public class GameRunner {
                 Cell target = emptyStandardCells.get(new Random().nextInt(emptyStandardCells.size()));
                 board.spawnMysteryCell(target.getIndex());
                 mysteryCellTimer = 4;
-
-                // Section 3.1: Mystery Cell Spawn Output Message
                 System.out.println("A mystery cell has spawned in location L" + target.getIndex() + " and will be at this location for the next four rounds.");
             }
         }
-
-        // 3. Section 3.1: End of Round Summary Output Message
         printRoundSummary();
     }
 
     private void printRoundSummary() {
-        // Adds a blank line and a clear divider BEFORE the summary starts
         System.out.println("\n--- END OF ROUND " + roundCount + " SUMMARY ---");
-
         for (PieceColor color : PieceColor.values()) {
             model.Player player = gameFacade.getPlayers().get(color);
             long onBoard = player.getPieces().stream().filter(p -> !p.isInBase() && !p.isCompleted()).count();
@@ -124,8 +133,6 @@ public class GameRunner {
         if (mystery != null) {
             System.out.println("The mystery cell is at L" + mystery.getIndex() + " and will be at that location for the next " + mysteryCellTimer + " values.");
         }
-
-        // Adds a blank line AFTER the summary so the next round's dice rolls stand out clearly
         System.out.println();
     }
 

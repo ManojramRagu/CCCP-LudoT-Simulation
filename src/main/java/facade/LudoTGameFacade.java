@@ -1,141 +1,147 @@
 package facade;
 
-import command.CommandFactory;
 import command.GameCommand;
 import dto.GameEventDTO;
 import model.*;
 import observer.GameEventObserver;
-import strategy.*;
+import strategy.AggressiveStrategy;
+import strategy.BlockingStrategy;
+import strategy.ChaoticStrategy;
+import strategy.OpportunisticStrategy;
 
 import java.util.*;
 
 public class LudoTGameFacade {
     private final Board board;
-    private final Dice dice;
     private final Map<PieceColor, Player> players;
-    private final Map<PieceColor, PlayerStrategy> strategies;
-    private final List<GameEventDTO> gameLog;
     private final List<GameEventObserver> observers;
-    private int currentTurn;
+    private final Dice dice;
+    private int turnCounter;
 
     public LudoTGameFacade() {
         this.board = Board.getInstance();
-        this.dice = new Dice();
         this.players = new EnumMap<>(PieceColor.class);
-        this.strategies = new EnumMap<>(PieceColor.class);
-        this.gameLog = new ArrayList<>();
         this.observers = new ArrayList<>();
-        this.currentTurn = 0;
-        initializeGame();
+        this.dice = new Dice();
+        this.turnCounter = 0;
+        initializePlayers();
     }
 
-    public void addObserver(GameEventObserver observer) {
-        if (observer != null && !observers.contains(observer)) observers.add(observer);
+    private void initializePlayers() {
+        players.put(PieceColor.RED, new Player("Red", PieceColor.RED, new AggressiveStrategy()));
+        players.put(PieceColor.GREEN, new Player("Green", PieceColor.GREEN, new BlockingStrategy()));
+        players.put(PieceColor.YELLOW, new Player("Yellow", PieceColor.YELLOW, new OpportunisticStrategy()));
+        players.put(PieceColor.BLUE, new Player("Blue", PieceColor.BLUE, new ChaoticStrategy()));
     }
 
-    private void notifyObservers(GameEventDTO event) {
-        for (GameEventObserver obs : observers) obs.onGameEvent(event);
-    }
-
-    private void initializeGame() {
-        for (PieceColor color : PieceColor.values()) {
-            PlayerStrategy strategy = switch (color) {
-                case RED -> new AggressiveStrategy();
-                case GREEN -> new BlockingStrategy();
-                case YELLOW -> new OpportunisticStrategy();
-                case BLUE -> new ChaoticStrategy();
-            };
-            players.put(color, new Player(color.name() + " Player", color, strategy));
-            strategies.put(color, strategy);
-        }
-    }
-
-    public GameEventDTO playTurn(PieceColor activeColor) {
-        currentTurn++;
-        Player player = players.get(activeColor);
-        PlayerStrategy strategy = strategies.get(activeColor);
-
+    public GameEventDTO playTurn(PieceColor color) {
+        turnCounter++;
+        Player player = players.get(color);
         int roll = dice.roll();
-        List<BoardToken> movableTokens = findMovableTokens(player, roll);
 
-        BoardToken chosenToken = strategy.selectTokenToMove(player, movableTokens, board, roll);
-        GameCommand command = CommandFactory.createMoveCommand(chosenToken, player, board, roll);
-        command.execute();
+        List<BoardToken> movableTokens = extractTokens(player);
+        BoardToken selectedToken = player.getStrategy().selectTokenToMove(player, movableTokens, board, roll);
 
-        boolean captured = command.hasCaptured();
-        int startPos = chosenToken != null ? command.getPreviousPosition() : -1;
-        int endPos = chosenToken != null ? chosenToken.getCurrentPosition() : -1;
-        String tokenId = buildTokenId(chosenToken);
+        int startPos = -1;
+        String pieceId = "None";
+        boolean captured = false;
+        String description;
 
-        String desc = formatSection31Message(activeColor, roll, tokenId, chosenToken, startPos, endPos, captured, player);
-        GameEventDTO event = new GameEventDTO(currentTurn, activeColor, roll, tokenId, startPos, endPos, captured, desc);
-        gameLog.add(event);
+        if (selectedToken != null) {
+            startPos = selectedToken.getCurrentPosition();
+            pieceId = formatTokenId(selectedToken);
+
+            GameCommand moveCommand = command.CommandFactory.createMoveCommand(selectedToken, player, board, roll);
+            if (moveCommand.isExecutable()) {
+                moveCommand.execute();
+                captured = moveCommand.hasCaptured();
+
+                if (startPos == -1) {
+                    description = String.format("[%s] player moves piece %s to the starting point.", color.name().toLowerCase(), pieceId);
+                } else if (captured) {
+                    description = String.format("[%s] piece %s lands on square L%d, captures opponent, and returns it to the base.", color.name().toLowerCase(), pieceId, selectedToken.getCurrentPosition());
+                } else {
+                    description = String.format("[%s] moves piece %s from location L%d to L%d by %d units.", color.name().toLowerCase(), pieceId, startPos, selectedToken.getCurrentPosition(), roll);
+                }
+            } else {
+                description = String.format("[%s] player rolled %d. [%s] player has no valid moves.", color.name().toLowerCase(), roll, color.name().toLowerCase());
+            }
+        } else {
+            description = String.format("[%s] player rolled %d. [%s] player has no valid moves.", color.name().toLowerCase(), roll, color.name().toLowerCase());
+        }
+
+        GameEventDTO event = new GameEventDTO(turnCounter, color, roll, pieceId, startPos,
+                selectedToken != null ? selectedToken.getCurrentPosition() : -1, captured, description);
         notifyObservers(event);
-
         return event;
     }
 
-    private List<BoardToken> findMovableTokens(Player player, int roll) {
-        List<BoardToken> movable = new ArrayList<>();
-        Map<Integer, List<Piece>> trackPositions = new HashMap<>();
+    // RULE T-6 IMPLEMENTED: Shatter blockade on three consecutive 6s
+    public void executePenaltyBreak(PieceColor color) {
+        Player player = players.get(color);
+        List<BoardToken> tokens = extractTokens(player);
+        for (BoardToken token : tokens) {
+            if (token instanceof Block block) {
+                List<Piece> pieces = block.getComponentPieces();
+                Piece survivor = pieces.getFirst();
 
-        for (Piece piece : player.getPieces()) {
-            if (piece.isCompleted()) continue;
+                for (int i = 1; i < pieces.size(); i++) {
+                    pieces.get(i).resetToBase();
+                }
 
-            if (piece.isInBase()) {
-                if (roll == 6) movable.add(piece);
-            } else {
-                trackPositions.computeIfAbsent(piece.getCurrentPosition(), k -> new ArrayList<>()).add(piece);
+                Cell currentCell = board.getTrackCell(survivor.getCurrentPosition());
+                currentCell.clearPieces();
+
+                int newPos = survivor.getDirection() == MovementDirection.CLOCKWISE
+                        ? (survivor.getCurrentPosition() + 6) % Board.TOTAL_TRACK_CELLS
+                        : (survivor.getCurrentPosition() - 6 + Board.TOTAL_TRACK_CELLS) % Board.TOTAL_TRACK_CELLS;
+
+                survivor.setCurrentPosition(newPos);
+                board.getTrackCell(newPos).addPiece(survivor);
+
+                System.out.println("RULE T-6 TRIGGERED: [" + color.name() + "] rolled three 6s. Blockade shattered.");
+                break;
             }
         }
+    }
 
-        for (List<Piece> grouped : trackPositions.values()) {
-            if (grouped.size() >= 2) {
-                movable.add(new Block(grouped));
-                movable.addAll(grouped);
+    public boolean hasBlockade(PieceColor color) {
+        return extractTokens(players.get(color)).stream().anyMatch(t -> t instanceof Block);
+    }
+
+    private List<BoardToken> extractTokens(Player player) {
+        List<BoardToken> tokens = new ArrayList<>();
+        Map<Integer, List<Piece>> positionMap = new HashMap<>();
+
+        for (Piece p : player.getPieces()) {
+            if (p.isCompleted()) continue;
+            positionMap.computeIfAbsent(p.getCurrentPosition(), k -> new ArrayList<>()).add(p);
+        }
+
+        for (List<Piece> group : positionMap.values()) {
+            if (group.size() > 1 && group.getFirst().getCurrentPosition() != -1) {
+                tokens.add(new Block(group));
             } else {
-                movable.add(grouped.get(0));
+                tokens.addAll(group);
             }
         }
-        return movable;
+        return tokens;
     }
 
-    private String buildTokenId(BoardToken token) {
-        if (token == null) return "NONE";
-        if (token.getTokenSize() == 1) return token.getComponentPieces().get(0).getId();
-        StringBuilder sb = new StringBuilder("BLOCK[");
-        for (Piece p : token.getComponentPieces()) sb.append(p.getId()).append(",");
-        return sb.substring(0, sb.length() - 1) + "]";
-    }
-
-    private String formatSection31Message(PieceColor color, int roll, String tokenId, BoardToken token, int startPos, int endPos, boolean captured, Player player) {
-        String colName = color.name().toLowerCase();
-        StringBuilder sb = new StringBuilder();
-        sb.append("[").append(colName).append("] player rolled ").append(roll).append(".");
-
-        if (token == null || tokenId.equals("NONE") || startPos == endPos) {
-            sb.append(" [").append(colName).append("] player has no valid moves.");
-        } else if (startPos == -1) {
-            sb.append(" [").append(colName).append("] player moves piece ").append(tokenId)
-                    .append(" to the starting point. [").append(colName).append("] player now has ")
-                    .append(player.getPieces().stream().filter(p -> !p.isInBase() && !p.isCompleted()).count())
-                    .append("/4 pieces on the board and ")
-                    .append(player.getPieces().stream().filter(Piece::isInBase).count()).append("/4 pieces on the base.");
-        } else {
-            sb.append(" [").append(colName).append("] moves piece ").append(tokenId)
-                    .append(" from location L").append(startPos).append(" to L").append(endPos)
-                    .append(" by ").append(roll).append(" units in ")
-                    .append(token.getDirection().name().toLowerCase().replace('_', '-')).append(" direction.");
+    private String formatTokenId(BoardToken token) {
+        if (token instanceof Piece p) return p.getId();
+        if (token instanceof Block b) {
+            StringBuilder sb = new StringBuilder("BLOCK(");
+            for (Piece p : b.getComponentPieces()) sb.append(p.getId()).append(",");
+            return sb.substring(0, sb.length() - 1) + ")";
         }
-
-        if (captured) {
-            sb.append(" [").append(colName).append("] piece ").append(tokenId)
-                    .append(" lands on square L").append(endPos).append(", captures opponent piece, and returns it to the base.");
-        }
-        return sb.toString();
+        return "Unknown";
     }
 
     public Board getBoard() { return board; }
     public Map<PieceColor, Player> getPlayers() { return Collections.unmodifiableMap(players); }
     public boolean isGameOver() { return players.values().stream().anyMatch(Player::hasWon); }
+    public void addObserver(GameEventObserver observer) { if (!observers.contains(observer)) observers.add(observer); }
+    public void removeObserver(GameEventObserver observer) { observers.remove(observer); }
+    private void notifyObservers(GameEventDTO event) { for (GameEventObserver obs : observers) obs.onGameEvent(event); }
 }
