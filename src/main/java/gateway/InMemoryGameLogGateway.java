@@ -12,7 +12,9 @@ public class InMemoryGameLogGateway implements GameLogGateway {
     public void logEvent(GameEventDTO event) {
         if (event != null) {
             events.add(event);
-            System.out.println(event.eventDescription());
+            if (event.eventDescription() != null && !event.eventDescription().isEmpty()) {
+                System.out.println(event.eventDescription());
+            }
         }
     }
 

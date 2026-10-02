@@ -17,7 +17,6 @@ public class ChaoticStrategy implements PlayerStrategy {
 
             for (BoardToken token : movableTokens) {
                 if (token.getComponentPieces().stream().anyMatch(p -> p.getId().endsWith(String.valueOf(targetCyclicIndex + 1)))) {
-                    
                     // 2. If CCW, prioritize landing on Mystery Cell
                     if (token.getDirection() == MovementDirection.COUNTER_CLOCKWISE && landsOnMysteryCell(token, board, diceRoll)) {
                         return token;
@@ -39,7 +38,15 @@ public class ChaoticStrategy implements PlayerStrategy {
 
     private boolean landsOnMysteryCell(BoardToken token, Board board, int diceRoll) {
         if (board.getActiveMysteryCell() == null || token.getCurrentPosition() == -1) return false;
-        int targetPos = (token.getCurrentPosition() + diceRoll) % Board.TOTAL_TRACK_CELLS;
+        int actualSteps = token.getTokenSize() > 1 ? (diceRoll / token.getTokenSize()) : diceRoll;
+        model.Piece firstPiece = token.getComponentPieces().getFirst();
+        if (firstPiece.isEnergized()) actualSteps *= 2;
+        if (firstPiece.isSick()) actualSteps /= 2;
+        if (actualSteps <= 0) return false;
+
+        int targetPos = token.getDirection() == MovementDirection.CLOCKWISE 
+                ? (token.getCurrentPosition() + actualSteps) % Board.TOTAL_TRACK_CELLS 
+                : (token.getCurrentPosition() - actualSteps + Board.TOTAL_TRACK_CELLS) % Board.TOTAL_TRACK_CELLS;
         return targetPos == board.getActiveMysteryCell().getIndex();
     }
 }

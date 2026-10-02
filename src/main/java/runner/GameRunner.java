@@ -40,6 +40,7 @@ public class GameRunner {
         }
 
         int totalTurnsExecuted = 0;
+        int playersPlayedInRound = 0;
 
         while (!gameFacade.isGameOver() && totalTurnsExecuted < MAX_TURNS) {
             PieceColor activeColor = turnOrder[turnIndex];
@@ -88,9 +89,11 @@ public class GameRunner {
                 }
             } while (bonusTurn && !gameFacade.isGameOver() && totalTurnsExecuted < MAX_TURNS);
 
-            // A single round is completed when 4 turns have executed
-            if (totalTurnsExecuted % 4 == 0) {
+            // A single round is completed when all 4 players have executed their turns
+            playersPlayedInRound++;
+            if (playersPlayedInRound == 4) {
                 handleRoundEnd();
+                playersPlayedInRound = 0;
             }
 
             turnIndex = (turnIndex + 1) % turnOrder.length;
@@ -149,7 +152,9 @@ public class GameRunner {
 
             // Replaced concatenation with exact String.format requested in the audit
             System.out.println(String.format("[%s] player now has %d/4 on pieces on the board and %d/4 pieces on the base.", color.name().toLowerCase(), onBoard, inBase));
-            System.out.println("============================ Location of pieces " + color.name().toLowerCase() + " ============================");
+            System.out.println("============================");
+            System.out.println("Location of pieces " + color.name().toLowerCase());
+            System.out.println("============================");
             for (model.Piece p : player.getPieces()) {
                 String loc = "Base";
                 if (!p.isInBase()) {

@@ -26,7 +26,7 @@ public class Player {
 
         this.pieces = new ArrayList<>(PIECES_PER_PLAYER);
         for (int i = 1; i <= PIECES_PER_PLAYER; i++) {
-            pieces.add(new Piece(color.name() + "-" + i, color));
+            pieces.add(new Piece(color.name().substring(0, 1) + i, color));
         }
     }
 

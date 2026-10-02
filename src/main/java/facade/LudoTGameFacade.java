@@ -41,7 +41,14 @@ public class LudoTGameFacade {
 
         System.out.println(String.format("[%s] player rolled %d.", color.name().toLowerCase(), roll));
         
-        List<BoardToken> movableTokens = extractTokens(player);
+        List<BoardToken> allTokens = extractTokens(player);
+        List<BoardToken> movableTokens = new ArrayList<>();
+        for (BoardToken token : allTokens) {
+            if (command.CommandFactory.createMoveCommand(token, player, board, roll) instanceof command.MovePieceCommand cmd && cmd.isExecutable()) {
+                movableTokens.add(token);
+            }
+        }
+        
         BoardToken selectedToken = player.getStrategy().selectTokenToMove(player, movableTokens, board, roll);
 
         int startPos = -1;
@@ -69,6 +76,8 @@ public class LudoTGameFacade {
                             moveCommand.getCapturedOpponentColor().name().toLowerCase(), moveCommand.getCapturedOpponentName());
                 } else if (landedOnMystery) {
                     // Ghost Movement: suppress the standard move output when teleportation will follow
+                    description = null;
+                } else if (startPos != -1 && startPos == selectedToken.getCurrentPosition()) {
                     description = null;
                 } else {
                     String dirStr = selectedToken.getDirection() == MovementDirection.CLOCKWISE ? "clockwise" : "counter-clockwise";
@@ -102,8 +111,10 @@ public class LudoTGameFacade {
         MysteryCellEffect effect = MysteryCellEffect.getRandomEffect(new Random());
         Piece firstPiece = token.getComponentPieces().getFirst();
         String pieceId = formatTokenId(token);
+        String locName = effect.name().replace("TELEPORT_", "");
+        locName = locName.substring(0, 1).toUpperCase() + locName.substring(1).toLowerCase();
         
-        System.out.println(String.format("[%s] player lands on a mystery cell and is teleported to %s.", color.name().toLowerCase(), effect.name().replace("TELEPORT_", "")));
+        System.out.println(String.format("[%s] player lands on a mystery cell and is teleported to %s.", color.name().toLowerCase(), locName));
 
         int currentPos = token.getCurrentPosition();
         Cell currentCell = board.getTrackCell(currentPos);
