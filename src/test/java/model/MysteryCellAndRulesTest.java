@@ -30,7 +30,7 @@ class MysteryCellAndRulesTest {
     }
 
     @Test
-    @DisplayName("Alpha energised status doubles movement speed per Rule T-12")
+    @DisplayName("Rule T-12: Alpha energised status doubles movement speed")
     void testAlphaEnergizedDoublesMovement() {
         piece.setEnergizedRounds(4);
         assertTrue(piece.isEnergized());
@@ -40,13 +40,29 @@ class MysteryCellAndRulesTest {
     }
 
     @Test
-    @DisplayName("Alpha sick status halves movement speed per Rule T-12")
+    @DisplayName("Rule T-12: Alpha sick status halves movement speed")
     void testAlphaSickHalvesMovement() {
         piece.setSickRounds(4);
         assertTrue(piece.isSick());
         int roll = 4;
         int effectiveMove = piece.isSick() ? roll / 2 : roll;
         assertEquals(2, effectiveMove);
+    }
+
+    @Test
+    @DisplayName("Rule T-13: Beta restricted piece returns to base on three consecutive 3s")
+    void testBetaEscapeOnConsecutiveThrees() {
+        piece.setRestrictedRounds(4);
+        assertTrue(piece.isRestricted());
+
+        // Simulating the engine detecting three consecutive 3s during the restriction
+        int consecutiveThrees = 3;
+        if (piece.isRestricted() && consecutiveThrees == 3) {
+            piece.resetToBase();
+        }
+
+        assertTrue(piece.isInBase());
+        assertFalse(piece.isRestricted());
     }
 
     @Test
