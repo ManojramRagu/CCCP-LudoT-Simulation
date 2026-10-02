@@ -21,6 +21,7 @@ public class GameRunner {
 
     private int roundCount = 0;
     private int mysteryCellTimer = 0;
+    private int previousMysteryCellIndex = -1;
 
     public GameRunner(LudoTGameFacade gameFacade, GameLogGateway logGateway, PieceColor startingColor) {
         this.gameFacade = gameFacade;
@@ -46,14 +47,17 @@ public class GameRunner {
             // RULE 4 & T-2 IMPLEMENTED: Bonus Rolls & Turn Execution Loop
             boolean bonusTurn;
             int consecutiveSixes = 0;
+            int consecutiveThrees = 0;
 
             do {
                 bonusTurn = false;
                 GameEventDTO event = gameFacade.playTurn(activeColor);
                 totalTurnsExecuted++;
 
-                if (event.diceRoll() == 6) {
+                int r = event.diceRoll();
+                if (r == 6) {
                     consecutiveSixes++;
+                    consecutiveThrees = 0;
                     if (consecutiveSixes == 3) {
                         System.out.println("Rule 4 Triggered: Third consecutive 6 rolled. Turn ignored.");
                         if (gameFacade.hasBlockade(activeColor)) {
@@ -65,6 +69,19 @@ public class GameRunner {
                     }
                 } else {
                     consecutiveSixes = 0;
+                    if (r == 3) {
+                        consecutiveThrees++;
+                        if (consecutiveThrees == 3) {
+                            for (model.Piece p : gameFacade.getPlayers().get(activeColor).getPieces()) {
+                                if (p.isRestricted()) {
+                                    p.resetToBase();
+                                    System.out.println(String.format("[%s] piece %s is movement-restricted and has rolled three consecutively. Teleporting piece %s to base.", activeColor.name().toLowerCase(), p.getId(), p.getId()));
+                                }
+                            }
+                        }
+                    } else {
+                        consecutiveThrees = 0;
+                    }
                     if (event.capturedOpponent()) {
                         bonusTurn = true; // Rule T-2 Capture Bonus Roll
                     }
@@ -98,6 +115,7 @@ public class GameRunner {
         if (roundCount >= 2 && board.getActiveMysteryCell() == null) {
             List<Cell> emptyStandardCells = new ArrayList<>();
             for (int i = 0; i < Board.TOTAL_TRACK_CELLS; i++) {
+                if (i == previousMysteryCellIndex) continue;
                 Cell c = board.getTrackCell(i);
                 if (c.getType() == CellType.STANDARD && c.getOccupyingPieces().isEmpty()) {
                     emptyStandardCells.add(c);
@@ -108,9 +126,17 @@ public class GameRunner {
                 Cell target = emptyStandardCells.get(new Random().nextInt(emptyStandardCells.size()));
                 board.spawnMysteryCell(target.getIndex());
                 mysteryCellTimer = 4;
+                previousMysteryCellIndex = target.getIndex();
                 System.out.println("A mystery cell has spawned in location L" + target.getIndex() + " and will be at this location for the next four rounds.");
             }
         }
+        
+        for (PieceColor color : PieceColor.values()) {
+            for (model.Piece p : gameFacade.getPlayers().get(color).getPieces()) {
+                p.decrementStatusEffects();
+            }
+        }
+        
         printRoundSummary();
     }
 
@@ -122,10 +148,19 @@ public class GameRunner {
             long inBase = player.getPieces().stream().filter(model.Piece::isInBase).count();
 
             // Replaced concatenation with exact String.format requested in the audit
-            System.out.println(String.format("[%s] player now has %d/4 pieces on the board and %d/4 pieces on the base.", color.name().toLowerCase(), onBoard, inBase));
+            System.out.println(String.format("[%s] player now has %d/4 on pieces on the board and %d/4 pieces on the base.", color.name().toLowerCase(), onBoard, inBase));
             System.out.println("============================ Location of pieces " + color.name().toLowerCase() + " ============================");
             for (model.Piece p : player.getPieces()) {
-                String loc = p.isInBase() ? "Base" : (p.isCompleted() ? "Home" : "L" + p.getCurrentPosition());
+                String loc = "Base";
+                if (!p.isInBase()) {
+                    if (p.isCompleted()) {
+                        loc = "Home";
+                    } else if (p.getState() == model.PieceState.HOME_STRAIGHT) {
+                        loc = color.name().toLowerCase() + "homepath" + p.getCurrentPosition();
+                    } else {
+                        loc = "L" + p.getCurrentPosition();
+                    }
+                }
                 System.out.println("Piece " + p.getId() + " -> " + loc);
             }
         }

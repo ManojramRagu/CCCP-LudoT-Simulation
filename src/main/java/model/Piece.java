@@ -16,6 +16,10 @@ public class Piece implements BoardToken {
     private int energizedRounds;
     private int sickRounds;
     private int restrictedRounds;
+    
+    private int approachPassCount;
+    private MovementDirection originalDirection;
+    private boolean arrivedViaTeleport;
 
     public Piece(String id, PieceColor color) {
         this.id = id;
@@ -26,6 +30,9 @@ public class Piece implements BoardToken {
         this.completed = false;
         this.capturesMade = 0;
         this.state = PieceState.BASE;
+        this.approachPassCount = 0;
+        this.originalDirection = MovementDirection.CLOCKWISE;
+        this.arrivedViaTeleport = false;
     }
 
     public String getId() { return id; }
@@ -97,6 +104,15 @@ public class Piece implements BoardToken {
     public boolean isRestricted() { return restrictedRounds > 0; }
     public void setRestrictedRounds(int rounds) { this.restrictedRounds = rounds; }
 
+    public int getApproachPassCount() { return approachPassCount; }
+    public void incrementApproachPassCount() { this.approachPassCount++; }
+    
+    public MovementDirection getOriginalDirection() { return originalDirection; }
+    public void setOriginalDirection(MovementDirection originalDirection) { this.originalDirection = originalDirection; }
+    
+    public boolean isArrivedViaTeleport() { return arrivedViaTeleport; }
+    public void setArrivedViaTeleport(boolean arrivedViaTeleport) { this.arrivedViaTeleport = arrivedViaTeleport; }
+
     public void resetToBase() {
         setInBase(true);
         this.capturesMade = 0;
@@ -104,6 +120,9 @@ public class Piece implements BoardToken {
         this.sickRounds = 0;
         this.restrictedRounds = 0;
         this.direction = MovementDirection.CLOCKWISE;
+        this.approachPassCount = 0;
+        this.originalDirection = MovementDirection.CLOCKWISE;
+        this.arrivedViaTeleport = false;
     }
 
     public void decrementStatusEffects() {

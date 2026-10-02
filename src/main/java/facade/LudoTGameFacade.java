@@ -39,41 +39,145 @@ public class LudoTGameFacade {
         Player player = players.get(color);
         int roll = dice.roll();
 
+        System.out.println(String.format("[%s] player rolled %d.", color.name().toLowerCase(), roll));
+        
         List<BoardToken> movableTokens = extractTokens(player);
         BoardToken selectedToken = player.getStrategy().selectTokenToMove(player, movableTokens, board, roll);
 
         int startPos = -1;
         String pieceId = "None";
         boolean captured = false;
-        String description;
+        String description = null;
 
         if (selectedToken != null) {
             startPos = selectedToken.getCurrentPosition();
             pieceId = formatTokenId(selectedToken);
 
-            GameCommand moveCommand = command.CommandFactory.createMoveCommand(selectedToken, player, board, roll);
-            if (moveCommand.isExecutable()) {
+            command.GameCommand genericCommand = command.CommandFactory.createMoveCommand(selectedToken, player, board, roll);
+            if (genericCommand instanceof command.MovePieceCommand moveCommand && moveCommand.isExecutable()) {
                 moveCommand.execute();
                 captured = moveCommand.hasCaptured();
 
                 if (startPos == -1) {
                     description = String.format("[%s] player moves piece %s to the starting point.", color.name().toLowerCase(), pieceId);
                 } else if (captured) {
-                    description = String.format("[%s] piece %s lands on square L%d, captures opponent, and returns it to the base.", color.name().toLowerCase(), pieceId, selectedToken.getCurrentPosition());
+                    description = String.format("[%s] piece %s lands on square L%d, captures [%s] piece %s, and returns it to the base.", 
+                            color.name().toLowerCase(), pieceId, selectedToken.getCurrentPosition(), 
+                            moveCommand.getCapturedOpponentColor().name().toLowerCase(), moveCommand.getCapturedOpponentName());
                 } else {
-                    description = String.format("[%s] moves piece %s from location L%d to L%d by %d units.", color.name().toLowerCase(), pieceId, startPos, selectedToken.getCurrentPosition(), roll);
+                    String dirStr = selectedToken.getDirection() == MovementDirection.CLOCKWISE ? "clockwise" : "counter-clockwise";
+                    description = String.format("[%s] moves piece %s from location L%d to L%d by %d units in %s direction.", 
+                            color.name().toLowerCase(), pieceId, startPos, selectedToken.getCurrentPosition(), roll, dirStr);
+                }
+                
+                if (startPos == -1 || captured) {
+                    long onBoard = player.getPieces().stream().filter(p -> !p.isInBase() && !p.isCompleted()).count();
+                    long inBase = player.getPieces().stream().filter(Piece::isInBase).count();
+                    System.out.println(String.format("[%s] player now has %d/4 on pieces on the board and %d/4 pieces on the base.", color.name().toLowerCase(), onBoard, inBase));
+                }
+                
+                if (selectedToken.getCurrentPosition() >= 0 && board.getTrackCell(selectedToken.getCurrentPosition()).getType() == CellType.MYSTERY) {
+                    handleTeleportation(selectedToken, color);
                 }
             } else {
-                description = String.format("[%s] player rolled %d. [%s] player has no valid moves.", color.name().toLowerCase(), roll, color.name().toLowerCase());
+                description = String.format("[%s] player has no valid moves.", color.name().toLowerCase());
             }
         } else {
-            description = String.format("[%s] player rolled %d. [%s] player has no valid moves.", color.name().toLowerCase(), roll, color.name().toLowerCase());
+            description = String.format("[%s] player has no valid moves.", color.name().toLowerCase());
         }
 
         GameEventDTO event = new GameEventDTO(turnCounter, color, roll, pieceId, startPos,
-                selectedToken != null ? selectedToken.getCurrentPosition() : -1, captured, description);
+                selectedToken != null ? selectedToken.getCurrentPosition() : -1, captured, description != null ? description : "");
         notifyObservers(event);
         return event;
+    }
+
+    private void handleTeleportation(BoardToken token, PieceColor color) {
+        MysteryCellEffect effect = MysteryCellEffect.getRandomEffect(new Random());
+        Piece firstPiece = token.getComponentPieces().getFirst();
+        String pieceId = formatTokenId(token);
+        
+        System.out.println(String.format("[%s] player lands on a mystery cell and is teleported to %s.", color.name().toLowerCase(), effect.name().replace("TELEPORT_", "")));
+
+        int currentPos = token.getCurrentPosition();
+        Cell currentCell = board.getTrackCell(currentPos);
+        for (Piece p : token.getComponentPieces()) {
+            currentCell.removePiece(p);
+            p.setArrivedViaTeleport(true);
+        }
+
+        int targetPos = currentPos;
+        switch (effect) {
+            case TELEPORT_ALPHA:
+                targetPos = Board.ALPHA_CELL_INDEX;
+                System.out.println(String.format("[%s] piece %s teleported to Alpha.", color.name().toLowerCase(), pieceId));
+                if (new Random().nextBoolean()) {
+                    for (Piece p : token.getComponentPieces()) p.setEnergizedRounds(4);
+                    System.out.println(String.format("[%s] piece %s feels energized, and movement speed doubles.", color.name().toLowerCase(), pieceId));
+                } else {
+                    for (Piece p : token.getComponentPieces()) p.setSickRounds(4);
+                    System.out.println(String.format("[%s] piece %s feels sick, and movement speed halves.", color.name().toLowerCase(), pieceId));
+                }
+                break;
+            case TELEPORT_BETA:
+                targetPos = Board.BETA_CELL_INDEX;
+                System.out.println(String.format("[%s] piece %s teleported to Beta.", color.name().toLowerCase(), pieceId));
+                for (Piece p : token.getComponentPieces()) p.setRestrictedRounds(4);
+                System.out.println(String.format("[%s] piece %s attends briefing and cannot move for four rounds.", color.name().toLowerCase(), pieceId));
+                break;
+            case TELEPORT_GAMMA:
+                targetPos = Board.GAMMA_CELL_INDEX;
+                System.out.println(String.format("[%s] piece %s teleported to Gamma.", color.name().toLowerCase(), pieceId));
+                if (firstPiece.getDirection() == MovementDirection.CLOCKWISE) {
+                    for (Piece p : token.getComponentPieces()) p.setDirection(MovementDirection.COUNTER_CLOCKWISE);
+                    System.out.println(String.format("The [%s] piece %s, which was moving clockwise, has changed to moving counterclockwise.", color.name().toLowerCase(), pieceId));
+                } else {
+                    targetPos = Board.BETA_CELL_INDEX;
+                    for (Piece p : token.getComponentPieces()) p.setRestrictedRounds(4);
+                    System.out.println(String.format("The [%s] piece %s is moving in a counterclockwise direction. Teleporting to Beta from Gamma.", color.name().toLowerCase(), pieceId));
+                    System.out.println(String.format("[%s] piece %s attends briefing and cannot move for four rounds.", color.name().toLowerCase(), pieceId));
+                }
+                break;
+            case TELEPORT_APPROACH:
+                targetPos = Board.getApproachIndex(color);
+                System.out.println(String.format("[%s] piece %s teleported to Approach.", color.name().toLowerCase(), pieceId));
+                break;
+            case TELEPORT_X:
+                targetPos = Board.getStartingIndex(color);
+                System.out.println(String.format("[%s] piece %s teleported to X.", color.name().toLowerCase(), pieceId));
+                break;
+            case TELEPORT_BASE:
+                for (Piece p : token.getComponentPieces()) {
+                    p.resetToBase();
+                }
+                System.out.println(String.format("[%s] piece %s teleported to Base.", color.name().toLowerCase(), pieceId));
+                return;
+        }
+
+        token.setCurrentPosition(targetPos);
+        Cell targetCell = board.getTrackCell(targetPos);
+        for (Piece p : token.getComponentPieces()) {
+            targetCell.addPiece(p);
+        }
+        
+        if (targetCell.hasOpponentPiece(color)) {
+            List<Piece> occupants = targetCell.getOccupyingPieces();
+            if (occupants.size() == token.getTokenSize()) {
+                String opponentName = occupants.getFirst().getId();
+                PieceColor oppColor = occupants.getFirst().getColor();
+                for (Piece occupant : occupants) {
+                    if (occupant.getColor() != color) {
+                        occupant.resetToBase();
+                        token.recordCapture(1);
+                    }
+                }
+                targetCell.getOccupyingPieces().removeIf(p -> p.getColor() != color);
+                System.out.println(String.format("[%s] piece %s lands on square L%d, captures [%s] piece %s, and returns it to the base.", color.name().toLowerCase(), pieceId, targetPos, oppColor.name().toLowerCase(), opponentName));
+                long onBoard = players.get(color).getPieces().stream().filter(p -> !p.isInBase() && !p.isCompleted()).count();
+                long inBase = players.get(color).getPieces().stream().filter(Piece::isInBase).count();
+                System.out.println(String.format("[%s] player now has %d/4 pieces on the board and %d/4 pieces on the base.", color.name().toLowerCase(), onBoard, inBase));
+            }
+        }
     }
 
     // RULE T-6 IMPLEMENTED: Shatter blockade on three consecutive 6s
@@ -86,7 +190,13 @@ public class LudoTGameFacade {
                 Piece survivor = pieces.getFirst();
 
                 for (int i = 1; i < pieces.size(); i++) {
-                    pieces.get(i).resetToBase();
+                    Piece p = pieces.get(i);
+                    int offset = 6 * i;
+                    int newPos = p.getOriginalDirection() == MovementDirection.CLOCKWISE
+                            ? (p.getCurrentPosition() + offset) % Board.TOTAL_TRACK_CELLS
+                            : (p.getCurrentPosition() - offset + Board.TOTAL_TRACK_CELLS) % Board.TOTAL_TRACK_CELLS;
+                    p.setCurrentPosition(newPos);
+                    board.getTrackCell(newPos).addPiece(p);
                 }
 
                 Cell currentCell = board.getTrackCell(survivor.getCurrentPosition());

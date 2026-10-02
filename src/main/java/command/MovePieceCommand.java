@@ -10,6 +10,8 @@ public class MovePieceCommand implements GameCommand {
     private final int diceRoll;
     private final int previousPosition;
     private boolean captured;
+    private String capturedOpponentName;
+    private PieceColor capturedOpponentColor;
 
     public MovePieceCommand(BoardToken token, Player player, Board board, int diceRoll) {
         this.token = token;
@@ -18,6 +20,8 @@ public class MovePieceCommand implements GameCommand {
         this.diceRoll = diceRoll;
         this.previousPosition = token != null ? token.getCurrentPosition() : -1;
         this.captured = false;
+        this.capturedOpponentName = "";
+        this.capturedOpponentColor = null;
     }
 
     @Override
@@ -26,10 +30,14 @@ public class MovePieceCommand implements GameCommand {
 
         Piece firstPiece = token.getComponentPieces().getFirst();
         if (firstPiece.isCompleted()) return false;
+        
+        if (firstPiece.isRestricted()) return false;
 
         if (firstPiece.isInBase()) return diceRoll == 6;
 
         int actualSteps = token.getTokenSize() > 1 ? (diceRoll / token.getTokenSize()) : diceRoll;
+        if (firstPiece.isEnergized()) actualSteps *= 2;
+        if (firstPiece.isSick()) actualSteps /= 2;
         if (actualSteps <= 0) return false;
 
         if (firstPiece.getState() == PieceState.HOME_STRAIGHT) {
@@ -54,12 +62,14 @@ public class MovePieceCommand implements GameCommand {
 
         Piece firstPiece = token.getComponentPieces().getFirst();
         int actualSteps = token.getTokenSize() > 1 ? (diceRoll / token.getTokenSize()) : diceRoll;
+        if (firstPiece.isEnergized()) actualSteps *= 2;
+        if (firstPiece.isSick()) actualSteps /= 2;
 
         if (firstPiece.isInBase()) {
             int startIdx = Board.getStartingIndex(player.getColor());
             token.setCurrentPosition(startIdx);
             Cell startCell = board.getTrackCell(startIdx);
-            handleCaptureOnCell(startCell);
+            handleCaptureOnCell(startCell, startIdx);
 
             CoinToss toss = new CoinToss();
             MovementDirection chosenDirection = toss.flip();
@@ -68,6 +78,7 @@ public class MovePieceCommand implements GameCommand {
                 p.setInBase(false);
                 p.setState(PieceState.STANDARD_TRACK);
                 p.setDirection(chosenDirection);
+                p.setOriginalDirection(chosenDirection);
                 startCell.addPiece(p);
             }
             return;
@@ -99,9 +110,18 @@ public class MovePieceCommand implements GameCommand {
                     : (currentPos - i + Board.TOTAL_TRACK_CELLS) % Board.TOTAL_TRACK_CELLS;
 
             if (prevPos == approachIndex && token.hasCapturedOpponent()) {
-                enteringHome = true;
-                homeStraightTarget = (actualSteps - i + 1) - 1;
-                break;
+                if (token.getDirection() == MovementDirection.COUNTER_CLOCKWISE) {
+                    firstPiece.incrementApproachPassCount();
+                    if (firstPiece.getApproachPassCount() >= 2) {
+                        enteringHome = true;
+                        homeStraightTarget = (actualSteps - i + 1) - 1;
+                        break;
+                    }
+                } else {
+                    enteringHome = true;
+                    homeStraightTarget = (actualSteps - i + 1) - 1;
+                    break;
+                }
             }
 
             Cell nextCell = board.getTrackCell(nextPos);
@@ -109,6 +129,14 @@ public class MovePieceCommand implements GameCommand {
             if (nextCell.isBlocked() && nextCell.hasOpponentPiece(player.getColor())) {
                 if (i == actualSteps && nextCell.getOccupyingPieces().size() == token.getTokenSize()) {
                     actualTarget = nextPos;
+                } else {
+                    String blockPieceName = nextCell.getOccupyingPieces().getFirst().getId();
+                    String blockColorName = nextCell.getOccupyingPieces().getFirst().getColor().name().toLowerCase();
+                    String myPieceName = token.getComponentPieces().getFirst().getId();
+                    System.out.println(String.format("[%s] piece %s is blocked from moving from L%d to L%d by [%s] piece %s.", 
+                        player.getColor().name().toLowerCase(), myPieceName, currentPos, (currentPos + actualSteps)%Board.TOTAL_TRACK_CELLS, blockColorName, blockPieceName));
+                    System.out.println(String.format("[%s] does not have other pieces in the board to move instead of the blocked piece.", player.getColor().name().toLowerCase()));
+                    System.out.println(String.format("Moved the piece to square L%d which is the cell before the block.", actualTarget));
                 }
                 break;
             }
@@ -129,7 +157,7 @@ public class MovePieceCommand implements GameCommand {
             }
         } else if (actualTarget != currentPos) {
             Cell targetCell = board.getTrackCell(actualTarget);
-            handleCaptureOnCell(targetCell);
+            handleCaptureOnCell(targetCell, actualTarget);
             token.setCurrentPosition(actualTarget);
             for(Piece p : token.getComponentPieces()) targetCell.addPiece(p);
         } else {
@@ -137,18 +165,24 @@ public class MovePieceCommand implements GameCommand {
         }
     }
 
-    private void handleCaptureOnCell(Cell targetCell) {
+    private void handleCaptureOnCell(Cell targetCell, int pos) {
         if (targetCell.hasOpponentPiece(player.getColor())) {
             List<Piece> occupants = targetCell.getOccupyingPieces();
             if (occupants.size() == token.getTokenSize()) {
+                capturedOpponentName = occupants.getFirst().getId();
+                capturedOpponentColor = occupants.getFirst().getColor();
+                List<Piece> toRemove = new java.util.ArrayList<>();
                 for (Piece occupant : occupants) {
                     if (occupant.getColor() != player.getColor()) {
                         occupant.resetToBase();
                         token.recordCapture(1);
                         this.captured = true;
+                        toRemove.add(occupant);
                     }
                 }
-                targetCell.clearPieces();
+                for (Piece p : toRemove) {
+                    targetCell.removePiece(p);
+                }
             }
         }
     }
@@ -166,4 +200,7 @@ public class MovePieceCommand implements GameCommand {
 
     @Override
     public boolean hasCaptured() { return captured; }
+    
+    public String getCapturedOpponentName() { return capturedOpponentName; }
+    public PieceColor getCapturedOpponentColor() { return capturedOpponentColor; }
 }
