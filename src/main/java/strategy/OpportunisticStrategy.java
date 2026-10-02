@@ -16,14 +16,52 @@ public class OpportunisticStrategy implements PlayerStrategy {
             if (baseToken != null) return baseToken;
         }
 
-        // 2. Prioritize pieces that NEED captures (have 0 captures currently)
+        // 2. Prioritize pieces that NEED captures (have 0 captures currently) and CAN capture with this roll
         for (BoardToken token : movableTokens) {
-            if (token.getCurrentPosition() != -1 && !token.hasCapturedOpponent()) {
+            if (token.getCurrentPosition() != -1 && !token.hasCapturedOpponent() && landsOnOpponent(token, board, diceRoll, player)) {
                 return token;
             }
         }
 
-        // 3. Default opportunistic move
-        return movableTokens.get(0);
+        // 3. Move the piece closest to its home
+        BoardToken closestToken = null;
+        int minDistance = Integer.MAX_VALUE;
+        for (BoardToken token : movableTokens) {
+            if (token.getCurrentPosition() == -1) continue;
+            int dist = distanceToOwnHome(token, player);
+            if (dist < minDistance) {
+                minDistance = dist;
+                closestToken = token;
+            }
+        }
+        
+        return closestToken != null ? closestToken : movableTokens.get(0);
+    }
+
+    private boolean landsOnOpponent(BoardToken token, Board board, int diceRoll, Player player) {
+        if (token.getCurrentPosition() == -1 || token.getComponentPieces().getFirst().getState() == model.PieceState.HOME_STRAIGHT) return false;
+        int actualSteps = token.getTokenSize() > 1 ? (diceRoll / token.getTokenSize()) : diceRoll;
+        model.Piece firstPiece = token.getComponentPieces().getFirst();
+        if (firstPiece.isEnergized()) actualSteps *= 2;
+        if (firstPiece.isSick()) actualSteps /= 2;
+        if (actualSteps <= 0) return false;
+
+        int targetPos = token.getDirection() == model.MovementDirection.CLOCKWISE 
+                ? (token.getCurrentPosition() + actualSteps) % Board.TOTAL_TRACK_CELLS 
+                : (token.getCurrentPosition() - actualSteps + Board.TOTAL_TRACK_CELLS) % Board.TOTAL_TRACK_CELLS;
+        
+        List<model.Piece> occupants = board.getTrackCell(targetPos).getOccupyingPieces();
+        return !occupants.isEmpty() && occupants.getFirst().getColor() != player.getColor() && occupants.size() <= token.getTokenSize();
+    }
+
+    private int distanceToOwnHome(BoardToken token, Player player) {
+        if (token.getComponentPieces().getFirst().getState() == model.PieceState.HOME_STRAIGHT) {
+            return Board.HOME_STRAIGHT_LENGTH - token.getCurrentPosition();
+        }
+        int approach = Board.getApproachIndex(player.getColor());
+        int currentPos = token.getCurrentPosition();
+        return token.getDirection() == model.MovementDirection.CLOCKWISE 
+            ? (approach - currentPos + Board.TOTAL_TRACK_CELLS) % Board.TOTAL_TRACK_CELLS
+            : (currentPos - approach + Board.TOTAL_TRACK_CELLS) % Board.TOTAL_TRACK_CELLS;
     }
 }

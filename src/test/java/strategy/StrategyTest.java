@@ -84,4 +84,96 @@ class StrategyTest {
         assertEquals(b1, strategy.selectTokenToMove(bluePlayer, List.of(b1, b2), board, 3));
         assertEquals(b2, strategy.selectTokenToMove(bluePlayer, List.of(b1, b2), board, 3));
     }
+
+    @Test
+    @DisplayName("Red (Aggressive): Prioritizes capture closest to opponent's home")
+    void testRedCapturePriorityClosestToHome() {
+        Piece r1 = redPlayer.getPieces().get(0);
+        Piece r2 = redPlayer.getPieces().get(1);
+        r1.setCurrentPosition(10); r1.setDirection(MovementDirection.CLOCKWISE); r1.setInBase(false); r1.setState(PieceState.STANDARD_TRACK);
+        r2.setCurrentPosition(20); r2.setDirection(MovementDirection.CLOCKWISE); r2.setInBase(false); r2.setState(PieceState.STANDARD_TRACK);
+
+        Player greenPlayerOpp = new Player("Green", PieceColor.GREEN, null);
+        Piece g1 = greenPlayerOpp.getPieces().get(0);
+        Piece g2 = greenPlayerOpp.getPieces().get(1);
+        
+        g1.setCurrentPosition(15); g1.setDirection(MovementDirection.CLOCKWISE); g1.setInBase(false); g1.setState(PieceState.STANDARD_TRACK);
+        g2.setCurrentPosition(25); g2.setDirection(MovementDirection.CLOCKWISE); g2.setInBase(false); g2.setState(PieceState.STANDARD_TRACK);
+
+        board.getTrackCell(15).addPiece(g1);
+        board.getTrackCell(25).addPiece(g2);
+
+        AggressiveStrategy strategy = new AggressiveStrategy();
+        // Roll 5 allows r1->15 (captures g1) OR r2->25 (captures g2)
+        // Green approach is 37. g1 is at 15 (dist=22). g2 is at 25 (dist=12).
+        // r2 capturing g2 is closest to Green's home.
+        BoardToken selected = strategy.selectTokenToMove(redPlayer, List.of(r1, r2), board, 5);
+        assertEquals(r2, selected);
+    }
+
+    @Test
+    @DisplayName("Red (Aggressive): Exits base if piece on track but no captures possible")
+    void testRedExitsBaseIfNoCaptures() {
+        Piece r1 = redPlayer.getPieces().get(0);
+        Piece r2 = redPlayer.getPieces().get(1);
+        r1.setCurrentPosition(10); r1.setInBase(false); r1.setState(PieceState.STANDARD_TRACK);
+        r2.setCurrentPosition(-1); r2.setInBase(true);
+
+        AggressiveStrategy strategy = new AggressiveStrategy();
+        BoardToken selected = strategy.selectTokenToMove(redPlayer, List.of(r1, r2), board, 6);
+        assertEquals(r2, selected); // No captures available, so pick base piece on 6
+    }
+
+    @Test
+    @DisplayName("Green (Blocking): Prioritizes creating block over exiting base")
+    void testGreenCreatesBlockOverBaseExit() {
+        Piece g1 = greenPlayer.getPieces().get(0);
+        Piece g2 = greenPlayer.getPieces().get(1);
+        Piece g3 = greenPlayer.getPieces().get(2);
+        
+        g1.setCurrentPosition(10); g1.setInBase(false); g1.setState(PieceState.STANDARD_TRACK); g1.setDirection(MovementDirection.CLOCKWISE);
+        g2.setCurrentPosition(16); g2.setInBase(false); g2.setState(PieceState.STANDARD_TRACK);
+        board.getTrackCell(16).addPiece(g2);
+        g3.setCurrentPosition(-1); g3.setInBase(true);
+
+        BlockingStrategy strategy = new BlockingStrategy();
+        // Roll 6 allows g1 to move to 16 (creating a block with g2) OR g3 to exit base.
+        BoardToken selected = strategy.selectTokenToMove(greenPlayer, List.of(g1, g3), board, 6);
+        assertEquals(g1, selected);
+    }
+
+    @Test
+    @DisplayName("Yellow (Opportunistic): Validates capture actually happens, else moves piece closest to its home")
+    void testYellowCaptureValidationAndFallback() {
+        Piece y1 = yellowPlayer.getPieces().get(0);
+        Piece y2 = yellowPlayer.getPieces().get(1);
+        
+        y1.setCurrentPosition(10); y1.setInBase(false); y1.setState(PieceState.STANDARD_TRACK); y1.setDirection(MovementDirection.CLOCKWISE);
+        y2.setCurrentPosition(40); y2.setInBase(false); y2.setState(PieceState.STANDARD_TRACK); y2.setDirection(MovementDirection.CLOCKWISE);
+        
+        // Neither has captures.
+        // Roll 4 -> y1 goes to 14, y2 goes to 44. No opponents at 14 or 44.
+        OpportunisticStrategy strategy = new OpportunisticStrategy();
+        BoardToken selected = strategy.selectTokenToMove(yellowPlayer, List.of(y1, y2), board, 4);
+        
+        // Fallback: move piece closest to its home (Yellow approach is 50).
+        // y2 at 40 (dist 10) is closer than y1 at 10 (dist 40).
+        assertEquals(y2, selected);
+    }
+
+    @Test
+    @DisplayName("Blue (Chaotic): Avoids mystery cell when CW by picking NEXT piece in cycle")
+    void testBlueAvoidsMysteryCell() {
+        Piece b1 = bluePlayer.getPieces().get(0);
+        Piece b2 = bluePlayer.getPieces().get(1);
+        b1.setCurrentPosition(10); b1.setInBase(false); b1.setState(PieceState.STANDARD_TRACK); b1.setDirection(MovementDirection.CLOCKWISE);
+        b2.setCurrentPosition(20); b2.setInBase(false); b2.setState(PieceState.STANDARD_TRACK); b2.setDirection(MovementDirection.CLOCKWISE);
+
+        board.spawnMysteryCell(15);
+        ChaoticStrategy strategy = new ChaoticStrategy();
+        
+        // Target cyclic is 0 (b1). Roll is 5. b1 goes to 15 (Mystery!). It should avoid it and pick b2.
+        BoardToken selected = strategy.selectTokenToMove(bluePlayer, List.of(b1, b2), board, 5);
+        assertEquals(b2, selected);
+    }
 }
