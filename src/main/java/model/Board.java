@@ -9,7 +9,7 @@ public class Board {
     // Singleton Instance
     private static Board instance;
 
-public static final int TOTAL_TRACK_CELLS = 52;
+    public static final int TOTAL_TRACK_CELLS = 52;
     public static final int HOME_STRAIGHT_LENGTH = 5;
 
     public static final int YELLOW_START_INDEX = 0;
