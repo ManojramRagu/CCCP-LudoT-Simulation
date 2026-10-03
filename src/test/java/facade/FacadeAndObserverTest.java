@@ -100,4 +100,17 @@ class FacadeAndObserverTest {
         assertEquals(1, count1.get());
         assertEquals(1, count2.get());
     }
+
+    @Test
+    @DisplayName("Facade successfully notifies registered observers (Mockito Verification)")
+    void testObserverNotificationMockito() {
+        GameEventObserver mockObserver = org.mockito.Mockito.mock(GameEventObserver.class);
+        facade.addObserver(mockObserver);
+        
+        facade.playTurn(PieceColor.RED);
+        
+        // Verify the observer's onGameEvent method was called exactly once with any GameEventDTO
+        org.mockito.Mockito.verify(mockObserver, org.mockito.Mockito.times(1))
+            .onGameEvent(org.mockito.ArgumentMatchers.any(GameEventDTO.class));
+    }
 }

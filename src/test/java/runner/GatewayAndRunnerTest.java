@@ -51,4 +51,23 @@ class GatewayAndRunnerTest {
         assertTrue(runner.getLoggedEventCount() > 0,
                 "Logged event count should be > 0");
     }
+
+    @Test
+    @DisplayName("GameRunner correctly interacts with Facade (Isolated using Mockito)")
+    void testGameRunnerIsolated() {
+        LudoTGameFacade mockFacade = org.mockito.Mockito.mock(LudoTGameFacade.class);
+        GameLogGateway mockGateway = org.mockito.Mockito.mock(GameLogGateway.class);
+        
+        // Mock facade to immediately return game over after one turn
+        org.mockito.Mockito.when(mockFacade.isGameOver()).thenReturn(false, true);
+        org.mockito.Mockito.when(mockFacade.playTurn(org.mockito.ArgumentMatchers.any())).thenReturn(
+            new dto.GameEventDTO(1, PieceColor.RED, 1, "R1", 26, 27, false, "Test")
+        );
+        
+        GameRunner runner = new GameRunner(mockFacade, mockGateway, PieceColor.RED);
+        runner.runSimulation();
+        
+        // Verify Facade was interacted with
+        org.mockito.Mockito.verify(mockFacade, org.mockito.Mockito.atLeastOnce()).playTurn(PieceColor.RED);
+    }
 }
