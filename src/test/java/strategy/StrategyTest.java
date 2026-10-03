@@ -4,6 +4,8 @@ import model.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import java.util.Collections;
 import java.util.List;
@@ -175,5 +177,40 @@ class StrategyTest {
         // Target cyclic is 0 (b1). Roll is 5. b1 goes to 15 (Mystery!). It should avoid it and pick b2.
         BoardToken selected = strategy.selectTokenToMove(bluePlayer, List.of(b1, b2), board, 5);
         assertEquals(b2, selected);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "6, -1",
+            "5, 10"
+    })
+    @DisplayName("Aggressive picks from base on 6 or track otherwise")
+    void testAggressivePicksFromBaseOrTrack(int roll, int position) {
+        Piece piece1 = redPlayer.getPieces().get(0);
+        piece1.setCurrentPosition(position);
+        piece1.setInBase(position == -1);
+        if (position != -1) piece1.setState(PieceState.STANDARD_TRACK);
+
+        List<BoardToken> tokens = Collections.singletonList(piece1);
+        BoardToken selected = redPlayer.getStrategy().selectTokenToMove(redPlayer, tokens, board, roll);
+        assertNotNull(selected);
+    }
+
+    @Test
+    @DisplayName("Aggressive fallback branch logic when no pieces can capture")
+    void testAggressiveFallbackWhenAllChoicesPoor() {
+        Piece piece1 = redPlayer.getPieces().get(0);
+        piece1.setInBase(false);
+        piece1.setState(PieceState.STANDARD_TRACK);
+        piece1.setCurrentPosition(10);
+        Piece opponent = new Piece("G1", PieceColor.GREEN);
+        opponent.setInBase(false);
+        opponent.setState(PieceState.STANDARD_TRACK);
+        opponent.setCurrentPosition(12);
+        board.getTrackCell(12).addPiece(opponent);
+        
+        List<BoardToken> tokens = Collections.singletonList(piece1);
+        BoardToken selected = redPlayer.getStrategy().selectTokenToMove(redPlayer, tokens, board, 2);
+        assertEquals(piece1, selected);
     }
 }

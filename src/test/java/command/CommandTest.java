@@ -5,7 +5,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+
 import java.util.Arrays;
+import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -21,7 +25,7 @@ class CommandTest {
 
     @Test
     @DisplayName("MovePieceCommand moves token out of base on rolling 6 and flips coin (Rule T-1)")
-    void testMovePieceCommandExitBaseAndCoinToss() {
+    void testExitBaseAndCoinToss() {
         Player player = new Player("Red", PieceColor.RED, null);
         Piece piece = player.getPieces().getFirst();
 
@@ -36,7 +40,7 @@ class CommandTest {
 
     @Test
     @DisplayName("Rule T-4: Block movement distance is dice roll divided by token size")
-    void testBlockMovementRuleT4() {
+    void testBlockMovement() {
         Player player = new Player("Green", PieceColor.GREEN, null);
         Piece g1 = player.getPieces().getFirst();
         Piece g2 = player.getPieces().get(1);
@@ -54,7 +58,7 @@ class CommandTest {
 
     @Test
     @DisplayName("Rule T-8: Blockade captures an identically sized opponent blockade")
-    void testBlockadeCapturesIdenticalBlockade() {
+    void testBlockadeCapturesBlockade() {
         Player red = new Player("Red", PieceColor.RED, null);
         Player blue = new Player("Blue", PieceColor.BLUE, null);
 
@@ -81,7 +85,7 @@ class CommandTest {
 
     @Test
     @DisplayName("Rule 10: Piece in Home Straight cannot overshoot target and rejects invalid move")
-    void testHomeStraightOvershootRejection() {
+    void testOvershootRejection() {
         Player player = new Player("Red", PieceColor.RED, null);
         Piece piece = player.getPieces().getFirst();
         piece.setInBase(false);
@@ -94,7 +98,7 @@ class CommandTest {
 
     @Test
     @DisplayName("Rule 10 & T-7: Moving from track to Home Straight rejects if roll overshoots Home")
-    void testEnteringHomeStraightOvershoot() {
+    void testEnterHomeOvershoot() {
         Player player = new Player("Yellow", PieceColor.YELLOW, null);
         Piece piece = player.getPieces().getFirst();
         piece.setInBase(false);
@@ -103,14 +107,14 @@ class CommandTest {
         piece.setDirection(MovementDirection.CLOCKWISE);
         piece.recordCapture(1);
 
-        // Distance to approach = 1. Home straight length = 5. Total exactly = 6. 7 overshoots.
-        GameCommand command = CommandFactory.createMoveCommand(piece, player, board, 7);
+        // Distance to approach = 1. Home straight length = 5. Total exactly = 7. 8 overshoots.
+        GameCommand command = CommandFactory.createMoveCommand(piece, player, board, 8);
         assertFalse(command.isExecutable());
     }
 
     @Test
     @DisplayName("testHomeStraightEntryDeniedNoCaptures: CW piece without captures bypasses approach")
-    void testHomeStraightEntryDeniedNoCaptures() {
+    void testEntryDeniedNoCaptures() {
         Player player = new Player("Yellow", PieceColor.YELLOW, null);
         Piece piece = player.getPieces().getFirst();
         piece.setInBase(false);
@@ -128,7 +132,7 @@ class CommandTest {
 
     @Test
     @DisplayName("testHomeStraightEntryGrantedWithCapture: CW piece with capture enters home straight")
-    void testHomeStraightEntryGrantedWithCapture() {
+    void testEntryGrantedWithCapture() {
         Player player = new Player("Yellow", PieceColor.YELLOW, null);
         Piece piece = player.getPieces().getFirst();
         piece.setInBase(false);
@@ -148,7 +152,7 @@ class CommandTest {
 
     @Test
     @DisplayName("testHomeStraightCounterClockwiseFirstPass: CCW piece on first pass bypasses approach even with capture")
-    void testHomeStraightCounterClockwiseFirstPass() {
+    void testCounterClockwiseFirstPass() {
         Player player = new Player("Yellow", PieceColor.YELLOW, null);
         Piece piece = player.getPieces().getFirst();
         piece.setInBase(false);
@@ -171,7 +175,7 @@ class CommandTest {
 
     @Test
     @DisplayName("T-12: Alpha energized doubles steps; Alpha sick halves steps")
-    void testAlphaEnergizedAndSick() {
+    void testAlphaEffect() {
         Player player = new Player("Yellow", PieceColor.YELLOW, null);
         Piece piece = player.getPieces().getFirst();
         piece.setInBase(false);
@@ -197,7 +201,7 @@ class CommandTest {
 
     @Test
     @DisplayName("Blocked piece with NO other movable pieces prints 'Ignoring the throw and moving on to the next player.'")
-    void testAlternateBlockResolution() {
+    void testBlockResolution() {
         Player red = new Player("Red", PieceColor.RED, null);
         Player blue = new Player("Blue", PieceColor.BLUE, null);
         Piece r1 = red.getPieces().getFirst();
@@ -287,5 +291,52 @@ class CommandTest {
         assertEquals(0, piece.getCurrentPosition()); // (2 steps - 1 to approach) - 1 = index 0 in home straight
         assertEquals(PieceState.HOME_STRAIGHT, piece.getState());
         assertEquals(2, piece.getApproachPassCount());
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "7, 0, false", // Can't reach exact home if remaining steps > HOME_STRAIGHT_LENGTH + 1
+            "6, 0, true",
+            "3, 0, true",
+            "1, 0, true"
+    })
+    @DisplayName("Home straight entry bounding values for exact rolls (Boundary Check)")
+    void testHomeStraightExactRollLogic(int roll, int distToApproach, boolean expectedExecutable) {
+        Player player = new Player("Yellow", PieceColor.YELLOW, null);
+        Piece piece = player.getPieces().getFirst();
+        piece.setInBase(false);
+        piece.setState(PieceState.STANDARD_TRACK);
+        piece.setCurrentPosition((Board.YELLOW_APPROACH_INDEX - distToApproach + Board.TOTAL_TRACK_CELLS) % Board.TOTAL_TRACK_CELLS);
+        piece.recordCapture(1); // Satisfy rule 9
+        
+        GameCommand command = CommandFactory.createMoveCommand(piece, player, board, roll);
+        assertEquals(expectedExecutable, command.isExecutable());
+    }
+
+    @Test
+    @DisplayName("Rule T-4: Edge case where a blockade cannot jump an opponent blockade and lands right before it")
+    void testCannotJumpBlockade() {
+        Player player = new Player("Yellow", PieceColor.YELLOW, null);
+        Piece piece = player.getPieces().getFirst();
+        piece.setInBase(false);
+        piece.setState(PieceState.STANDARD_TRACK);
+        piece.setDirection(MovementDirection.CLOCKWISE);
+        
+        Player opponent = new Player("Blue", PieceColor.BLUE, null);
+        Piece op1 = opponent.getPieces().get(0);
+        Piece op2 = opponent.getPieces().get(1);
+        op1.setInBase(false); op2.setInBase(false);
+        op1.setState(PieceState.STANDARD_TRACK); op2.setState(PieceState.STANDARD_TRACK);
+        op1.setCurrentPosition(15);
+        op2.setCurrentPosition(15);
+        board.getTrackCell(15).addPiece(op1);
+        board.getTrackCell(15).addPiece(op2);
+        
+        piece.setCurrentPosition(12);
+        GameCommand command = CommandFactory.createMoveCommand(piece, player, board, 6);
+        
+        command.execute();
+        // Should be blocked and land on adjacent square (14)
+        assertEquals(14, piece.getCurrentPosition());
     }
 }

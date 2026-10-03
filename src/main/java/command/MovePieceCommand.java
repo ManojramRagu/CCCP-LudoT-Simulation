@@ -54,7 +54,7 @@ public class MovePieceCommand implements GameCommand {
                 return true;
             }
 
-            return actualSteps <= distToApproach || (actualSteps - distToApproach) <= Board.HOME_STRAIGHT_LENGTH;
+            return actualSteps <= distToApproach || (actualSteps - distToApproach) <= (Board.HOME_STRAIGHT_LENGTH + 1);
         }
         return true;
     }
@@ -141,7 +141,12 @@ public class MovePieceCommand implements GameCommand {
                             : (currentPos - actualSteps + Board.TOTAL_TRACK_CELLS) % Board.TOTAL_TRACK_CELLS;
                     System.out.println(String.format("[%s] piece %s is blocked from moving from L%d to L%d by [%s] piece %s.", 
                         player.getColor().name().toLowerCase(), myPieceName, currentPos, intendedTarget, blockColorName, blockPieceName));
-                    System.out.println(String.format("[%s] does not have other pieces in the board to move instead of the blocked piece.", player.getColor().name().toLowerCase()));
+                    
+                    long piecesOnBoard = player.getPieces().stream().filter(p -> !p.isInBase() && !p.isCompleted()).count();
+                    if (piecesOnBoard <= token.getTokenSize()) {
+                        System.out.println(String.format("[%s] does not have other pieces in the board to move instead of the blocked piece.", player.getColor().name().toLowerCase()));
+                    }
+                    
                     if (actualTarget == currentPos) {
                         System.out.println("Ignoring the throw and moving on to the next player.");
                     } else {

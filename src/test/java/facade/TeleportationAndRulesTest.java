@@ -22,7 +22,7 @@ class TeleportationAndRulesTest {
     }
 
     @Test
-    void testMysteryCellTeleportationAndStatusEffects() {
+    void testMysteryCellTeleportation() {
         // T-11 to T-15 and CCW rules tested here loosely
         Board board = facade.getBoard();
         board.spawnMysteryCell(5);
@@ -44,7 +44,7 @@ class TeleportationAndRulesTest {
     }
     
     @Test
-    void testBlockBreakOriginalDirection() {
+    void testBlockBreakDirection() {
         Piece p = new Piece("G1", PieceColor.GREEN);
         p.setOriginalDirection(MovementDirection.CLOCKWISE);
         p.setDirection(MovementDirection.COUNTER_CLOCKWISE);
@@ -55,7 +55,7 @@ class TeleportationAndRulesTest {
     }
 
     @Test
-    void testBetaRestrictionEarlyEscape() {
+    void testBetaEarlyEscape() {
         model.Player player = new model.Player("Red", PieceColor.RED, null);
         Piece piece = player.getPieces().getFirst();
         piece.setInBase(false);
@@ -93,7 +93,7 @@ class TeleportationAndRulesTest {
     }
 
     @Test
-    void testGammaCounterClockwiseException() {
+    void testGammaCounterClockwise() {
         model.Player player = new model.Player("Green", PieceColor.GREEN, null);
         Piece piece = player.getPieces().getFirst();
         piece.setInBase(false);
@@ -113,7 +113,7 @@ class TeleportationAndRulesTest {
     }
 
     @Test
-    void testBlockShatterDirectionMemory2() {
+    void testBlockShatterDirection() {
         model.Player player = new model.Player("Blue", PieceColor.BLUE, null);
         Piece b1 = player.getPieces().get(0);
         Piece b2 = player.getPieces().get(1);

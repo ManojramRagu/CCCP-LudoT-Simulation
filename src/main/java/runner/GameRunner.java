@@ -41,6 +41,7 @@ public class GameRunner {
 
         int totalTurnsExecuted = 0;
         int playersPlayedInRound = 0;
+        java.util.Map<PieceColor, Integer> consecutiveThreesMap = new java.util.HashMap<>();
 
         while (!gameFacade.isGameOver() && totalTurnsExecuted < MAX_TURNS) {
             PieceColor activeColor = turnOrder[turnIndex];
@@ -48,7 +49,6 @@ public class GameRunner {
             // RULE 4 & T-2 IMPLEMENTED: Bonus Rolls & Turn Execution Loop
             boolean bonusTurn;
             int consecutiveSixes = 0;
-            int consecutiveThrees = 0;
 
             do {
                 bonusTurn = false;
@@ -58,7 +58,7 @@ public class GameRunner {
                 int r = event.diceRoll();
                 if (r == 6) {
                     consecutiveSixes++;
-                    consecutiveThrees = 0;
+                    consecutiveThreesMap.put(activeColor, 0);
                     if (consecutiveSixes == 3) {
                         System.out.println("Rule 4 Triggered: Third consecutive 6 rolled. Turn ignored.");
                         if (gameFacade.hasBlockade(activeColor)) {
@@ -71,8 +71,10 @@ public class GameRunner {
                 } else {
                     consecutiveSixes = 0;
                     if (r == 3) {
-                        consecutiveThrees++;
-                        if (consecutiveThrees == 3) {
+                        int count = consecutiveThreesMap.getOrDefault(activeColor, 0) + 1;
+                        consecutiveThreesMap.put(activeColor, count);
+                        if (count == 3) {
+                            consecutiveThreesMap.put(activeColor, 0);
                             for (model.Piece p : gameFacade.getPlayers().get(activeColor).getPieces()) {
                                 if (p.isRestricted()) {
                                     p.resetToBase();
@@ -81,7 +83,7 @@ public class GameRunner {
                             }
                         }
                     } else {
-                        consecutiveThrees = 0;
+                        consecutiveThreesMap.put(activeColor, 0);
                     }
                     if (event.capturedOpponent()) {
                         bonusTurn = true; // Rule T-2 Capture Bonus Roll
@@ -166,7 +168,7 @@ public class GameRunner {
                         loc = "L" + p.getCurrentPosition();
                     }
                 }
-                System.out.println("Piece " + p.getId() + " - > " + loc);
+                System.out.println("Piece " + p.getId() + " − > " + loc);
             }
         }
 
@@ -182,7 +184,7 @@ public class GameRunner {
         PieceColor winner = gameFacade.getPlayers().values().stream()
                 .filter(model.Player::hasWon).map(model.Player::getColor).findFirst().orElse(null);
         if (winner != null) {
-            System.out.println("[" + winner.name().toLowerCase() + "] player wins!!!");
+            System.out.println("[" + winner.name().toLowerCase() + " ] player wins!!!");
         }
     }
 

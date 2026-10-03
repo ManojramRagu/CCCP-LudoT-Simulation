@@ -4,6 +4,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -64,5 +67,38 @@ class BoardTest {
         board.removeMysteryCell();
         assertNull(board.getActiveMysteryCell());
         assertEquals(CellType.STARTING_X, board.getTrackCell(0).getType());
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "0, YELLOW",
+            "13, BLUE",
+            "26, RED",
+            "39, GREEN"
+    })
+    @DisplayName("Starting indices correctly defined per piece color")
+    void testStartingIndices(int expectedIndex, PieceColor color) {
+        assertEquals(expectedIndex, Board.getStartingIndex(color));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "50, YELLOW",
+            "11, BLUE",
+            "24, RED",
+            "37, GREEN"
+    })
+    @DisplayName("Approach indices correctly defined per piece color")
+    void testApproachIndices(int expectedIndex, PieceColor color) {
+        assertEquals(expectedIndex, Board.getApproachIndex(color));
+    }
+
+    @Test
+    @DisplayName("Alpha, Beta, Gamma cell calculations are exactly 9, 27, 46 from yellow approach")
+    void testAlphaBetaGammaCalculations() {
+        int yellowApproach = Board.YELLOW_APPROACH_INDEX;
+        assertEquals((yellowApproach + 9) % Board.TOTAL_TRACK_CELLS, Board.ALPHA_CELL_INDEX);
+        assertEquals((yellowApproach + 27) % Board.TOTAL_TRACK_CELLS, Board.BETA_CELL_INDEX);
+        assertEquals((yellowApproach + 46) % Board.TOTAL_TRACK_CELLS, Board.GAMMA_CELL_INDEX);
     }
 }

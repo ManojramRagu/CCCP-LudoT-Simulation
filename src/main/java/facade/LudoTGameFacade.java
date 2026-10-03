@@ -59,6 +59,7 @@ public class LudoTGameFacade {
         if (selectedToken != null) {
             startPos = selectedToken.getCurrentPosition();
             pieceId = formatTokenId(selectedToken);
+            boolean wasInHomeStraight = selectedToken.getComponentPieces().getFirst().getState() == PieceState.HOME_STRAIGHT;
 
             command.GameCommand genericCommand = command.CommandFactory.createMoveCommand(selectedToken, player, board, roll);
             if (genericCommand instanceof command.MovePieceCommand moveCommand && moveCommand.isExecutable()) {
@@ -81,8 +82,11 @@ public class LudoTGameFacade {
                     description = null;
                 } else {
                     String dirStr = selectedToken.getDirection() == MovementDirection.CLOCKWISE ? "clockwise" : "counter-clockwise";
-                    description = String.format("[%s] moves piece %s from location L%d to L%d by %d units in %s direction.", 
-                            color.name().toLowerCase(), pieceId, startPos, selectedToken.getCurrentPosition(), roll, dirStr);
+                    String startLocStr = wasInHomeStraight ? color.name().toLowerCase() + "homepath" + startPos : "L" + startPos;
+                    boolean isNowInHomeStraight = selectedToken.getComponentPieces().getFirst().getState() == PieceState.HOME_STRAIGHT;
+                    String endLocStr = isNowInHomeStraight ? color.name().toLowerCase() + "homepath" + selectedToken.getCurrentPosition() : "L" + selectedToken.getCurrentPosition();
+                    description = String.format("[%s] moves piece %s from location %s to %s by %d units in %s direction.", 
+                            color.name().toLowerCase(), pieceId, startLocStr, endLocStr, roll, dirStr);
                 }
                 
                 if (startPos == -1 || captured) {
