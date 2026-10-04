@@ -115,6 +115,7 @@ public class Piece implements BoardToken {
 
     public void resetToBase() {
         setInBase(true);
+        this.completed = false;
         this.capturesMade = 0;
         this.energizedRounds = 0;
         this.sickRounds = 0;

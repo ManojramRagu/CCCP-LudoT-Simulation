@@ -184,7 +184,7 @@ public class GameRunner {
         PieceColor winner = gameFacade.getPlayers().values().stream()
                 .filter(model.Player::hasWon).map(model.Player::getColor).findFirst().orElse(null);
         if (winner != null) {
-            System.out.println("[" + winner.name().toLowerCase() + " ] player wins!!!");
+            System.out.println("[" + winner.name().toLowerCase() + "] player wins!!!");
         }
     }
 

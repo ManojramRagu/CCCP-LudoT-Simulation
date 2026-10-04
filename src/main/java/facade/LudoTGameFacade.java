@@ -84,7 +84,15 @@ public class LudoTGameFacade {
                     String dirStr = selectedToken.getDirection() == MovementDirection.CLOCKWISE ? "clockwise" : "counter-clockwise";
                     String startLocStr = wasInHomeStraight ? color.name().toLowerCase() + "homepath" + startPos : "L" + startPos;
                     boolean isNowInHomeStraight = selectedToken.getComponentPieces().getFirst().getState() == PieceState.HOME_STRAIGHT;
-                    String endLocStr = isNowInHomeStraight ? color.name().toLowerCase() + "homepath" + selectedToken.getCurrentPosition() : "L" + selectedToken.getCurrentPosition();
+                    boolean isNowCompleted = selectedToken.getComponentPieces().getFirst().getState() == PieceState.COMPLETED;
+                    String endLocStr;
+                    if (isNowCompleted) {
+                        endLocStr = "Home";
+                    } else if (isNowInHomeStraight) {
+                        endLocStr = color.name().toLowerCase() + "homepath" + selectedToken.getCurrentPosition();
+                    } else {
+                        endLocStr = "L" + selectedToken.getCurrentPosition();
+                    }
                     description = String.format("[%s] moves piece %s from location %s to %s by %d units in %s direction.", 
                             color.name().toLowerCase(), pieceId, startLocStr, endLocStr, roll, dirStr);
                 }
