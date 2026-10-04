@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 
 public class Board {
-    // Singleton Instance
     private static Board instance;
 
     public static final int TOTAL_TRACK_CELLS = 52;
@@ -110,7 +109,6 @@ public class Board {
         };
     }
 
-    // Added the missing method here
     public static int getApproachIndex(PieceColor color) {
         return switch (color) {
             case YELLOW -> YELLOW_APPROACH_INDEX;

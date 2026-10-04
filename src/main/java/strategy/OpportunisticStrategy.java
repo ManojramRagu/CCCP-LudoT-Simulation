@@ -10,20 +10,17 @@ public class OpportunisticStrategy implements PlayerStrategy {
     public BoardToken selectTokenToMove(Player player, List<BoardToken> movableTokens, Board board, int diceRoll) {
         if (movableTokens == null || movableTokens.isEmpty()) return null;
 
-        // 1. Prioritize empty base.
         if (diceRoll == 6) {
             BoardToken baseToken = movableTokens.stream().filter(t -> t.getCurrentPosition() == -1).findFirst().orElse(null);
             if (baseToken != null) return baseToken;
         }
 
-        // 2. Prioritize pieces that NEED captures (have 0 captures currently) and CAN capture with this roll
         for (BoardToken token : movableTokens) {
             if (token.getCurrentPosition() != -1 && !token.hasCapturedOpponent() && landsOnOpponent(token, board, diceRoll, player)) {
                 return token;
             }
         }
 
-        // 3. Move the piece closest to its home
         BoardToken closestToken = null;
         int minDistance = Integer.MAX_VALUE;
         for (BoardToken token : movableTokens) {

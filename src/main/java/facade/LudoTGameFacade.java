@@ -77,7 +77,6 @@ public class LudoTGameFacade {
                 } else if (startPos == -1) {
                     description = String.format("[%s] player moves piece %s to the starting point.", color.name().toLowerCase(), pieceId);
                 } else if (landedOnMystery) {
-                    // Ghost Movement: suppress the standard move output when teleportation will follow
                     description = null;
                 } else if (startPos != -1 && startPos == selectedToken.getCurrentPosition()) {
                     description = null;
@@ -214,7 +213,6 @@ public class LudoTGameFacade {
                         targetCell.removePiece(occupant);
                     }
                 }
-                // Capture Sequence: capture announcement BEFORE counts
                 System.out.println(String.format("[%s] piece %s lands on square L%d, captures [%s] piece %s, and returns it to the base.", color.name().toLowerCase(), pieceId, targetPos, oppColor.name().toLowerCase(), opponentName));
                 long onBoard = players.get(color).getPieces().stream().filter(p -> !p.isInBase() && !p.isCompleted()).count();
                 long inBase = players.get(color).getPieces().stream().filter(Piece::isInBase).count();
@@ -225,7 +223,6 @@ public class LudoTGameFacade {
         return false;
     }
 
-    // RULE T-6 IMPLEMENTED: Shatter blockade on three consecutive 6s
     public void executePenaltyBreak(PieceColor color) {
         Player player = players.get(color);
         List<BoardToken> tokens = extractTokens(player);
@@ -268,7 +265,7 @@ public class LudoTGameFacade {
         for (List<Piece> group : positionMap.values()) {
             if (group.size() > 1 && group.getFirst().getCurrentPosition() != -1) {
                 tokens.add(new Block(group));
-                tokens.addAll(group); // Include individual pieces to allow strategies to voluntarily break blocks
+                tokens.addAll(group);
             } else {
                 tokens.addAll(group);
             }

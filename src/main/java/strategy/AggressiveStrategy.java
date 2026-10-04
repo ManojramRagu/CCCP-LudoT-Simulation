@@ -13,7 +13,6 @@ public class AggressiveStrategy implements PlayerStrategy {
     public BoardToken selectTokenToMove(Player player, List<BoardToken> movableTokens, Board board, int diceRoll) {
         if (movableTokens == null || movableTokens.isEmpty()) return null;
 
-        // 1. Prioritize capturing opponent pieces (closest to the opponent's home)
         BoardToken bestCaptureToken = null;
         int minDistance = Integer.MAX_VALUE;
         for (BoardToken token : movableTokens) {
@@ -28,13 +27,11 @@ public class AggressiveStrategy implements PlayerStrategy {
         }
         if (bestCaptureToken != null) return bestCaptureToken;
 
-        // 2. Will not take a piece from base unless it cannot capture with a 6
         if (diceRoll == 6) {
             BoardToken baseToken = getTokenInBase(movableTokens);
             if (baseToken != null) return baseToken;
         }
 
-        // 3. Avoid creating blocks - pick a token that doesn't share a destination with our own pieces.
         for (BoardToken token : movableTokens) {
             if (token.getCurrentPosition() != -1 && !landsOnOwnPiece(token, board, diceRoll, player)) {
                 return token;

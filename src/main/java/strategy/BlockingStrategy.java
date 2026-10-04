@@ -14,14 +14,12 @@ public class BlockingStrategy implements PlayerStrategy {
     public BoardToken selectTokenToMove(Player player, List<BoardToken> movableTokens, Board board, int diceRoll) {
         if (movableTokens == null || movableTokens.isEmpty()) return null;
 
-        // 1. Attempt to move forward using a block move (Rule T-4)
         for (BoardToken token : movableTokens) {
             if (token instanceof Block) {
                 return token;
             }
         }
 
-        // 2. Green likes an empty base. Always move to X on a 6, unless moving 6 creates a block.
         if (diceRoll == 6) {
             for (BoardToken token : movableTokens) {
                 if (token.getCurrentPosition() != -1 && token.getTokenSize() == 1 && landsOnOwnPiece(token, board, diceRoll, player)) {
@@ -32,15 +30,13 @@ public class BlockingStrategy implements PlayerStrategy {
             if (baseToken != null) return baseToken;
         }
 
-        // 3. Green will only break a block when other pieces are in front of it if and only if 
-        // the value of the roll cannot be performed by green using the pieces in front of the block.
         BoardToken blockToBreak = null;
         for (BoardToken token : movableTokens) {
             if (token.getTokenSize() == 1 && token.getCurrentPosition() != -1) {
                 long piecesOfMyColor = board.getTrackCell(token.getCurrentPosition()).getOccupyingPieces().stream()
                         .filter(p -> p.getColor() == player.getColor()).count();
                 if (piecesOfMyColor > 1) {
-                    blockToBreak = token; // This is a piece that is part of a block
+                    blockToBreak = token;
                 }
             }
         }
@@ -52,16 +48,13 @@ public class BlockingStrategy implements PlayerStrategy {
                     long piecesOfMyColor = board.getTrackCell(token.getCurrentPosition()).getOccupyingPieces().stream()
                             .filter(p -> p.getColor() == player.getColor()).count();
                     if (piecesOfMyColor == 1 && isPieceInFront(token, blockToBreak, player)) {
-                        return token; // Move the piece in front
+                        return token;
                     }
                 }
             }
-            // If we reach here and there is a block to break, it means no piece in front could perform the roll.
-            // We can break the block (or move a piece behind, but breaking block is allowed now).
             return blockToBreak;
         }
 
-        // 4. Move any other free piece
         for (BoardToken token : movableTokens) {
             if (token.getTokenSize() == 1 && token.getCurrentPosition() != -1) {
                 long piecesOfMyColor = board.getTrackCell(token.getCurrentPosition()).getOccupyingPieces().stream()

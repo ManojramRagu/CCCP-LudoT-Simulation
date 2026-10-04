@@ -10,7 +10,6 @@ public interface BoardToken {
     List<Piece> getComponentPieces();
     int getTokenSize();
 
-    // Added for Rule T-8 integration
     boolean hasCapturedOpponent();
     void recordCapture(int amount);
 }

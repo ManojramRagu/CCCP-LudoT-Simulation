@@ -46,7 +46,6 @@ public class GameRunner {
         while (!gameFacade.isGameOver() && totalTurnsExecuted < MAX_TURNS) {
             PieceColor activeColor = turnOrder[turnIndex];
 
-            // RULE 4 & T-2 IMPLEMENTED: Bonus Rolls & Turn Execution Loop
             int pendingBonusRolls = 0;
             int consecutiveSixes = 0;
 
@@ -61,12 +60,12 @@ public class GameRunner {
                     if (consecutiveSixes == 3) {
                         System.out.println("Rule 4 Triggered: Third consecutive 6 rolled. Turn ignored.");
                         if (gameFacade.hasBlockade(activeColor)) {
-                            gameFacade.executePenaltyBreak(activeColor); // Rule T-6 Execution
+                            gameFacade.executePenaltyBreak(activeColor);
                         }
                         pendingBonusRolls = 0;
-                        break; // End the turn
+                        break;
                     } else {
-                        pendingBonusRolls++; // Rule 4 Bonus Roll
+                        pendingBonusRolls++;
                     }
                 } else {
                     consecutiveSixes = 0;
@@ -88,7 +87,7 @@ public class GameRunner {
                 }
                 
                 if (event.capturedOpponent()) {
-                    pendingBonusRolls++; // Rule T-2 Capture Bonus Roll
+                    pendingBonusRolls++;
                 }
                 
                 if (pendingBonusRolls > 0) {
@@ -98,7 +97,6 @@ public class GameRunner {
                 }
             } while (!gameFacade.isGameOver() && totalTurnsExecuted < MAX_TURNS);
 
-            // A single round is completed when all 4 players have executed their turns
             playersPlayedInRound++;
             if (playersPlayedInRound == 4) {
                 handleRoundEnd();
@@ -159,7 +157,6 @@ public class GameRunner {
             long onBoard = player.getPieces().stream().filter(p -> !p.isInBase() && !p.isCompleted()).count();
             long inBase = player.getPieces().stream().filter(model.Piece::isInBase).count();
 
-            // Replaced concatenation with exact String.format requested in the audit
             System.out.println(String.format("[%s] player now has %d/4 on pieces on the board and %d/4 pieces on the base.", color.name().toLowerCase(), onBoard, inBase));
             System.out.println("============================");
             System.out.println("Location of pieces " + color.name().toLowerCase());
@@ -181,7 +178,6 @@ public class GameRunner {
 
         model.Cell mystery = gameFacade.getBoard().getActiveMysteryCell();
         if (mystery != null) {
-            // Replaced concatenation with exact String.format requested in the audit
             System.out.println(String.format("The mystery cell is at L%d and will be at that location for the next %d values.", mystery.getIndex(), mysteryCellTimer));
         }
         System.out.println();

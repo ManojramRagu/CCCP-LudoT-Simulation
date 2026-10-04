@@ -11,7 +11,6 @@ public class Dice {
         this(new Random());
     }
 
-    // Constructor injection allows injecting a mocked Random object for 100% deterministic JUnit tests
     public Dice(Random random) {
         this.random = Objects.requireNonNull(random, "Random generator cannot be null");
         this.lastRoll = 0;

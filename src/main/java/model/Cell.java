@@ -42,7 +42,6 @@ public class Cell {
         return false;
     }
 
-    // Evaluates if the cell forms a block dynamically
     public boolean isBlocked() {
         if (occupyingPieces.size() < 2) return false;
         PieceColor firstColor = occupyingPieces.get(0).getColor();

@@ -47,15 +47,12 @@ public class Block implements BoardToken {
         if (allSameDirection) {
             return firstDir;
         }
-        
-        // Opposing directions: calculate which direction has longest distance from home
+
         int approachIndex = Board.getApproachIndex(color);
         int pos = currentPosition;
-        
-        // Distance if moving clockwise
+
         int cwDistance = (approachIndex - pos + Board.TOTAL_TRACK_CELLS) % Board.TOTAL_TRACK_CELLS;
-        
-        // Distance if moving counter-clockwise
+
         int ccwDistance = (pos - approachIndex + Board.TOTAL_TRACK_CELLS) % Board.TOTAL_TRACK_CELLS;
         
         return cwDistance >= ccwDistance ? MovementDirection.CLOCKWISE : MovementDirection.COUNTER_CLOCKWISE;
@@ -78,7 +75,6 @@ public class Block implements BoardToken {
 
     @Override
     public void recordCapture(int amount) {
-        // Rule T-8: Capture count increments for every piece participating in the capturing blockade
         for (Piece p : pieces) {
             p.recordCapture(amount);
         }
