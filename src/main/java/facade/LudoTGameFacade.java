@@ -44,7 +44,7 @@ public class LudoTGameFacade {
         List<BoardToken> allTokens = extractTokens(player);
         List<BoardToken> movableTokens = new ArrayList<>();
         for (BoardToken token : allTokens) {
-            if (command.CommandFactory.createMoveCommand(token, player, board, roll) instanceof command.MovePieceCommand cmd && cmd.isExecutable()) {
+            if (command.CommandFactory.createMoveCommand(token, player, board, roll).isExecutable()) {
                 movableTokens.add(token);
             }
         }
@@ -62,9 +62,9 @@ public class LudoTGameFacade {
             boolean wasInHomeStraight = selectedToken.getComponentPieces().getFirst().getState() == PieceState.HOME_STRAIGHT;
 
             command.GameCommand genericCommand = command.CommandFactory.createMoveCommand(selectedToken, player, board, roll);
-            if (genericCommand instanceof command.MovePieceCommand moveCommand && moveCommand.isExecutable()) {
-                moveCommand.execute();
-                captured = moveCommand.hasCaptured();
+            if (genericCommand.isExecutable()) {
+                genericCommand.execute();
+                captured = genericCommand.hasCaptured();
 
                 boolean landedOnMystery = selectedToken.getCurrentPosition() >= 0 
                         && board.getTrackCell(selectedToken.getCurrentPosition()).getType() == CellType.MYSTERY;
@@ -74,7 +74,7 @@ public class LudoTGameFacade {
                 } else if (captured) {
                     description = String.format("[%s] piece %s lands on square L%d, captures [%s] piece %s, and returns it to the base.", 
                             color.name().toLowerCase(), pieceId, selectedToken.getCurrentPosition(), 
-                            moveCommand.getCapturedOpponentColor().name().toLowerCase(), moveCommand.getCapturedOpponentName());
+                            genericCommand.getCapturedOpponentColor().name().toLowerCase(), genericCommand.getCapturedOpponentName());
                 } else if (landedOnMystery) {
                     // Ghost Movement: suppress the standard move output when teleportation will follow
                     description = null;

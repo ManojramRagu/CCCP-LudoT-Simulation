@@ -216,6 +216,8 @@ public class MovePieceCommand implements GameCommand {
     @Override
     public boolean hasCaptured() { return captured; }
     
+    @Override
     public String getCapturedOpponentName() { return capturedOpponentName; }
+    @Override
     public PieceColor getCapturedOpponentColor() { return capturedOpponentColor; }
 }

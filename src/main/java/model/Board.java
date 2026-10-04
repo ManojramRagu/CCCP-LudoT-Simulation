@@ -1,6 +1,7 @@
 package model;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -79,7 +80,7 @@ public class Board {
     }
 
     public List<Cell> getHomeStraight(PieceColor color) {
-        return homeStraights.get(color);
+        return Collections.unmodifiableList(homeStraights.get(color));
     }
 
     public void spawnMysteryCell(int index) {
