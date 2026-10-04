@@ -101,7 +101,50 @@ class FacadeTest {
         GameEventDTO event = game.playTurn(PieceColor.YELLOW);
         
         assertTrue(event.capturedOpponent(), "Capture flag must be true");
-        assertTrue(event.description().contains("captures"), "Capture string must be logged");
+        assertTrue(event.eventDescription().contains("captures"), "Capture string must be logged");
         assertTrue(opponent.isInBase(), "Opponent must be returned to base");
+    }
+
+    @Test
+    @DisplayName("GameRunner grants exactly TWO bonus rolls when rolling 6 AND capturing")
+    void testDoubleBonusRollRule() throws Exception {
+        LudoTGameFacade game = new LudoTGameFacade();
+        
+        model.Player red = game.getPlayers().get(PieceColor.RED);
+        model.Player green = game.getPlayers().get(PieceColor.GREEN);
+        
+        model.Piece redPiece = red.getPieces().get(0);
+        redPiece.setInBase(false);
+        redPiece.setState(model.PieceState.STANDARD_TRACK);
+        redPiece.setCurrentPosition(0);
+        game.getBoard().getTrackCell(0).addPiece(redPiece);
+        
+        model.Piece greenPiece = green.getPieces().get(0);
+        greenPiece.setInBase(false);
+        greenPiece.setState(model.PieceState.STANDARD_TRACK);
+        greenPiece.setCurrentPosition(6);
+        game.getBoard().getTrackCell(6).addPiece(greenPiece);
+        
+        model.Dice mockDice = org.mockito.Mockito.mock(model.Dice.class);
+        org.mockito.Mockito.when(mockDice.roll()).thenReturn(6, 2, 2, 2, 2);
+        java.lang.reflect.Field diceField = LudoTGameFacade.class.getDeclaredField("dice");
+        diceField.setAccessible(true);
+        diceField.set(game, mockDice);
+        
+        java.util.List<PieceColor> turnHistory = new java.util.ArrayList<>();
+        game.addObserver(event -> {
+            turnHistory.add(event.playerColor());
+            if (turnHistory.size() >= 4) {
+                 red.getPieces().forEach(p -> p.setCompleted(true)); // Force game over
+            }
+        });
+        
+        runner.GameRunner runner = new runner.GameRunner(game, null, PieceColor.RED);
+        runner.runSimulation();
+        
+        assertEquals(PieceColor.RED, turnHistory.get(0), "1st turn is RED");
+        assertEquals(PieceColor.RED, turnHistory.get(1), "2nd turn is RED (Bonus for 6)");
+        assertEquals(PieceColor.RED, turnHistory.get(2), "3rd turn is RED (Bonus for capture)");
+        assertEquals(PieceColor.GREEN, turnHistory.get(3), "4th turn advances to GREEN");
     }
 }

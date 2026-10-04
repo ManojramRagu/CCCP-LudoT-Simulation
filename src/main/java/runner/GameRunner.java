@@ -47,11 +47,10 @@ public class GameRunner {
             PieceColor activeColor = turnOrder[turnIndex];
 
             // RULE 4 & T-2 IMPLEMENTED: Bonus Rolls & Turn Execution Loop
-            boolean bonusTurn;
+            int pendingBonusRolls = 0;
             int consecutiveSixes = 0;
 
             do {
-                bonusTurn = false;
                 GameEventDTO event = gameFacade.playTurn(activeColor);
                 totalTurnsExecuted++;
 
@@ -64,9 +63,10 @@ public class GameRunner {
                         if (gameFacade.hasBlockade(activeColor)) {
                             gameFacade.executePenaltyBreak(activeColor); // Rule T-6 Execution
                         }
+                        pendingBonusRolls = 0;
                         break; // End the turn
                     } else {
-                        bonusTurn = true; // Rule 4 Bonus Roll
+                        pendingBonusRolls++; // Rule 4 Bonus Roll
                     }
                 } else {
                     consecutiveSixes = 0;
@@ -85,11 +85,18 @@ public class GameRunner {
                     } else {
                         consecutiveThreesMap.put(activeColor, 0);
                     }
-                    if (event.capturedOpponent()) {
-                        bonusTurn = true; // Rule T-2 Capture Bonus Roll
-                    }
                 }
-            } while (bonusTurn && !gameFacade.isGameOver() && totalTurnsExecuted < MAX_TURNS);
+                
+                if (event.capturedOpponent()) {
+                    pendingBonusRolls++; // Rule T-2 Capture Bonus Roll
+                }
+                
+                if (pendingBonusRolls > 0) {
+                    pendingBonusRolls--;
+                } else {
+                    break;
+                }
+            } while (!gameFacade.isGameOver() && totalTurnsExecuted < MAX_TURNS);
 
             // A single round is completed when all 4 players have executed their turns
             playersPlayedInRound++;
