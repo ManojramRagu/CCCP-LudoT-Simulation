@@ -67,14 +67,15 @@ public class LudoTGameFacade {
                 captured = genericCommand.hasCaptured();
 
                 boolean landedOnMystery = selectedToken.getCurrentPosition() >= 0 
+                        && selectedToken.getComponentPieces().getFirst().getState() == PieceState.STANDARD_TRACK
                         && board.getTrackCell(selectedToken.getCurrentPosition()).getType() == CellType.MYSTERY;
 
-                if (startPos == -1) {
-                    description = String.format("[%s] player moves piece %s to the starting point.", color.name().toLowerCase(), pieceId);
-                } else if (captured) {
+                if (captured) {
                     description = String.format("[%s] piece %s lands on square L%d, captures [%s] piece %s, and returns it to the base.", 
                             color.name().toLowerCase(), pieceId, selectedToken.getCurrentPosition(), 
                             genericCommand.getCapturedOpponentColor().name().toLowerCase(), genericCommand.getCapturedOpponentName());
+                } else if (startPos == -1) {
+                    description = String.format("[%s] player moves piece %s to the starting point.", color.name().toLowerCase(), pieceId);
                 } else if (landedOnMystery) {
                     // Ghost Movement: suppress the standard move output when teleportation will follow
                     description = null;
@@ -93,8 +94,17 @@ public class LudoTGameFacade {
                     } else {
                         endLocStr = "L" + selectedToken.getCurrentPosition();
                     }
+                    
+                    int actualSteps = roll;
+                    if (selectedToken.getTokenSize() > 1) {
+                        actualSteps = roll / selectedToken.getTokenSize();
+                    }
+                    Piece firstP = selectedToken.getComponentPieces().getFirst();
+                    if (firstP.isEnergized()) actualSteps *= 2;
+                    if (firstP.isSick()) actualSteps /= 2;
+
                     description = String.format("[%s] moves piece %s from location %s to %s by %d units in %s direction.", 
-                            color.name().toLowerCase(), pieceId, startLocStr, endLocStr, roll, dirStr);
+                            color.name().toLowerCase(), pieceId, startLocStr, endLocStr, actualSteps, dirStr);
                 }
                 
                 if (startPos == -1 || captured) {
@@ -104,7 +114,8 @@ public class LudoTGameFacade {
                 }
                 
                 if (landedOnMystery) {
-                    handleTeleportation(selectedToken, color);
+                    boolean teleportCaptured = handleTeleportation(selectedToken, color);
+                    if (teleportCaptured) captured = true;
                 }
             } else {
                 description = String.format("[%s] player has no valid moves.", color.name().toLowerCase());
@@ -119,7 +130,7 @@ public class LudoTGameFacade {
         return event;
     }
 
-    private void handleTeleportation(BoardToken token, PieceColor color) {
+    private boolean handleTeleportation(BoardToken token, PieceColor color) {
         MysteryCellEffect effect = MysteryCellEffect.getRandomEffect(new Random());
         Piece firstPiece = token.getComponentPieces().getFirst();
         String pieceId = formatTokenId(token);
@@ -133,6 +144,7 @@ public class LudoTGameFacade {
         for (Piece p : token.getComponentPieces()) {
             currentCell.removePiece(p);
             p.setArrivedViaTeleport(true);
+            p.setState(PieceState.STANDARD_TRACK);
         }
 
         int targetPos = currentPos;
@@ -180,7 +192,7 @@ public class LudoTGameFacade {
                     p.resetToBase();
                 }
                 System.out.println(String.format("[%s] piece %s teleported to Base.", color.name().toLowerCase(), pieceId));
-                return;
+                return false;
         }
 
         token.setCurrentPosition(targetPos);
@@ -207,8 +219,10 @@ public class LudoTGameFacade {
                 long onBoard = players.get(color).getPieces().stream().filter(p -> !p.isInBase() && !p.isCompleted()).count();
                 long inBase = players.get(color).getPieces().stream().filter(Piece::isInBase).count();
                 System.out.println(String.format("[%s] player now has %d/4 on pieces on the board and %d/4 pieces on the base.", color.name().toLowerCase(), onBoard, inBase));
+                return true;
             }
         }
+        return false;
     }
 
     // RULE T-6 IMPLEMENTED: Shatter blockade on three consecutive 6s
@@ -219,26 +233,17 @@ public class LudoTGameFacade {
             if (token instanceof Block block) {
                 List<Piece> pieces = block.getComponentPieces();
                 Piece survivor = pieces.getFirst();
+                Cell currentCell = board.getTrackCell(survivor.getCurrentPosition());
 
                 for (int i = 1; i < pieces.size(); i++) {
                     Piece p = pieces.get(i);
-                    int offset = 6 * i;
-                    int newPos = p.getOriginalDirection() == MovementDirection.CLOCKWISE
-                            ? (p.getCurrentPosition() + offset) % Board.TOTAL_TRACK_CELLS
-                            : (p.getCurrentPosition() - offset + Board.TOTAL_TRACK_CELLS) % Board.TOTAL_TRACK_CELLS;
+                    currentCell.removePiece(p);
+                    int newPos = block.getDirection() == MovementDirection.CLOCKWISE
+                            ? (p.getCurrentPosition() + 6) % Board.TOTAL_TRACK_CELLS
+                            : (p.getCurrentPosition() - 6 + Board.TOTAL_TRACK_CELLS) % Board.TOTAL_TRACK_CELLS;
                     p.setCurrentPosition(newPos);
                     board.getTrackCell(newPos).addPiece(p);
                 }
-
-                Cell currentCell = board.getTrackCell(survivor.getCurrentPosition());
-                currentCell.clearPieces();
-
-                int newPos = survivor.getDirection() == MovementDirection.CLOCKWISE
-                        ? (survivor.getCurrentPosition() + 6) % Board.TOTAL_TRACK_CELLS
-                        : (survivor.getCurrentPosition() - 6 + Board.TOTAL_TRACK_CELLS) % Board.TOTAL_TRACK_CELLS;
-
-                survivor.setCurrentPosition(newPos);
-                board.getTrackCell(newPos).addPiece(survivor);
 
                 System.out.println("RULE T-6 TRIGGERED: [" + color.name() + "] rolled three 6s. Blockade shattered.");
                 break;
@@ -252,11 +257,12 @@ public class LudoTGameFacade {
 
     private List<BoardToken> extractTokens(Player player) {
         List<BoardToken> tokens = new ArrayList<>();
-        Map<Integer, List<Piece>> positionMap = new HashMap<>();
+        Map<String, List<Piece>> positionMap = new HashMap<>();
 
         for (Piece p : player.getPieces()) {
             if (p.isCompleted()) continue;
-            positionMap.computeIfAbsent(p.getCurrentPosition(), k -> new ArrayList<>()).add(p);
+            String key = p.getState().name() + "_" + p.getCurrentPosition();
+            positionMap.computeIfAbsent(key, k -> new ArrayList<>()).add(p);
         }
 
         for (List<Piece> group : positionMap.values()) {
